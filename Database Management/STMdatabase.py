@@ -1,4 +1,7 @@
 import sqlite3
+import pySPM
+import datetime
+import platform
 
 
 class STMdatabase:
@@ -17,7 +20,7 @@ class STMdatabase:
     STMIMAGEINFO= {"List_ID":1,"TIME_STAMP":100,"NANONIS_VERSION":"SiC001",
               "REC_DATE":"","REC_TIME":"","REC_TEMP":290,"ACQ_TIME":20.0,
               "SCAN_PIXELS":512,"SCAN_FILE":"","SCAN_TIME":30.0,"SCAN_RANGE":20,
-              "SCAN_OFFSET":"","SCAN_ANGLE":10.0,"SCAN_DIR":'up',"Time":'09:09:29',
+              "SCAN_OFFSET":"","SCAN_ANGLE":10.0,"SCAN_DIR":'up',
               "BIAS": 2.5,"Z_CONTROLLER": "","COMMENT":"SXM","Session_Path":"",
               "SW_Version":"","UI_Release":"","RT_Release":"","RT_Frequency":"",
               "Signals_Oversampling":"","Animations_Period":"","Indicators_Period":"",
@@ -38,7 +41,9 @@ class STMdatabase:
                  "Experiment_parameters":"0","Parameters":"4E-3"," Experiment_size":"8E-3","Points":"TRUE",
                  "Channels":"-211.889E-9","Delay":"Gaussian","Experiment":"3","Start_time":"","End_time":"",
                  "User":"Gaussian","comment":"3","Current":"","Calibration":"","Offset":"","Gain":""}
-
+    STMGRIDVALUE={"Info_ID":1,"List_ID":1,"TIME_STAMP":1,"Para":"","Current":"",
+                  "Bias":"","LIX_1_omega ":"","LIY_1_omega ":""}
+    
     CREATE_SPEC_VALUE_SQL = """ CREATE TABLE IF NOT EXISTS {0} (
                                         Data_ID   INTEGER PRIMARY KEY AUTOINCREMENT,
                                         Info_ID INTEGER,
@@ -318,35 +323,110 @@ class STMdatabase:
 
 
 
-    def insert_list_table(self,STMdateList:list=STMDATALIST)->None:
+    def insert_list_table(self,STMdateList:STMDATALIST=STMDATALIST)->None:
         table=self.DATA_LIST_NAME
         DATA_LIST=self.STMDATALIST
         self.insert_table(table,DATA_LIST,STMdateList)
         
-    def insert_imageInfo_table(self,STMdateList:list=STMIMAGEINFO)->None:
+    def insert_imageInfo_table(self,STMdateList:STMIMAGEINFO=STMIMAGEINFO)->None:
         table=self.IMAGE_INFO_NAME
         DATA_LIST=self.STMIMAGEINFO
         self.insert_table(table,DATA_LIST,STMdateList)
 
-    def insert_imageValue_table(self,STMdateList:list=STMIMAGEVALUE)->None:
+    def insert_imageValue_table(self,STMdateList:STMIMAGEVALUE=STMIMAGEVALUE)->None:
         table=self.IMAGE_VALUE_NAME
         DATA_LIST=self.STMIMAGEVALUE
         self.insert_table(table,DATA_LIST,STMdateList)
 
-    def insert_specInfo_table(self,STMdateList:list=STMSPECINFO)->None:
+    def insert_specInfo_table(self,STMdateList:STMSPECINFO=STMSPECINFO)->None:
         table=self.SPEC_INFO_NAME
         DATA_LIST=self.STMSPECINFO
         self.insert_table(table,DATA_LIST,STMdateList)
 
-    def insert_specValue_table(self,STMdateList:list=STMSPECVALUE)->None:
+    def insert_specValue_table(self,STMdateList:STMSPECVALUE=STMSPECVALUE)->None:
         table=self.SPEC_VALUE_NAME
         DATA_LIST=self.STMSPECVALUE
         self.insert_table(table,DATA_LIST,STMdateList)
     
-    def insert_gridInfo_table(self,STMdateList:list=STMGRIDINFO)->None:
+    def insert_gridInfo_table(self,STMdateList:STMGRIDINFO=STMGRIDINFO)->None:
         table=self.GRID_INFO_NAME
         DATA_LIST=self.STMGRIDINFO
         self.insert_table(table,DATA_LIST,STMdateList)
+
+    def insert_gridValue_table(self,STMdateList:STMGRIDVALUE=STMGRIDVALUE)->None:
+        table=self.GRID_VALUE_NAME
+        DATA_LIST=self.STMGRIDVALUE
+        self.insert_table(table,DATA_LIST,STMdateList)
+
+
+class utilize:
+    def string_to_timestamp(date_string, format_string='%Y-%m-%d %H:%M:%S'):
+        try:
+            # Parse the date string into a datetime object
+            date_obj = datetime.datetime.strptime(date_string, format_string)
+
+            # Convert the datetime object to a timestamp
+            timestamp = date_obj.timestamp()
+            return timestamp
+        except ValueError as e:
+            print(f"Error: {e}")
+            return None
+    def get_platform():
+        platforms={
+            "linux1":"linux",
+            "linux2":"linux",
+            "darwin":"OS X",
+            "win32":"Windows"
+        }
+        if platform not in platforms:
+            return platform
+        return platforms[platform]
+
+class STMdata: 
+    def __init__(self,filePath: str) -> None:
+        self.filePath=filePath
+        self.dataList=STMdatabase.STMDATALIST
+    def get_data_list(self)->STMdatabase.STMDATALIST:
+        self.dataList["UpdateFilePath"]=self.filePath
+        file=[f for f in self.filePath.split(".")]
+        filetype=file[-1]
+        
+        platform = utilize.get_platform()
+        if platform=="Windows":
+            fileData=[f for f in file[-2].split("\\")]
+        else:
+            fileData=[f for f in file[-2].split("/")]
+        fileName=fileData[-1]
+        self.dataList["Name"]=fileName
+        self.dataList["Type"]=filetype
+        return self.dataList
+
+    
+class STMimage(STMdata):
+    def __init__(self, filePath: str) -> None:
+        super().__init__(filePath)
+    def get_data_list(self) -> STMdatabase.STMDATALIST:
+        format_string='%d.%m.%Y %H:%M:%S'
+        SXMfile=pySPM.SXM(self.filePath)
+        header=SXMfile.header
+        [x_n,y_n]=header['SCAN_RANGE'][0]
+        Bias=header['BIAS'][0][0]
+        Curr=header['Z-CONTROLLER'][1][3]
+        Pos=header['SCAN_OFFSET'][0]
+        FilePath=header['SCAN_FILE'][0][0]+header['SCAN_FILE'][0][1]
+        REC_Data=header['REC_DATE'][0][0]
+        REC_Time=header['REC_TIME'][0][0]
+        date_time_s=REC_Data+" "+REC_Time
+        timestamp = utilize.string_to_timestamp(date_time_s,format_string)
+        self.dataList["TimeStamp"]=timestamp
+        self.dataList["Date"]=REC_Data
+        self.dataList["Time"]=REC_Time
+        self.dataList["Bias_V"]=round(float(Bias),2)
+        self.dataList["Current_pA"]=round(float(Curr)*1e12,1)
+        self.dataList["PosX_nm"]=round(float(Pos[0])*1e9,3)
+        self.dataList["PosY_nm"]=round(float(Pos[1])*1e9,3)
+        return super().get_data_list()
+    
     
 
 
