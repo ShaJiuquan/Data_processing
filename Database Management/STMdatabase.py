@@ -17,7 +17,7 @@ class STMdatabase:
     STMDATALIST={"Name":"SiC001","TimeStamp":20.0,"UpdateFilePath":"",
              "Date":'24.02.2023',"Time":'09:09:29',"Bias_V": 2.5,
              "Current_pA": 30,"Type":"SXM","PosX_nm":328,"PosY_nm":328}
-    STMIMAGEINFO= {"List_ID":1,"TIME_STAMP":100,"NANONIS_VERSION":"SiC001",
+    STMIMAGEINFO= {"List_ID":1,"TIME_STAMP":100,"NANONIS_VERSION":"SiC001","SCANIT_TYPE":"",
               "REC_DATE":"","REC_TIME":"","REC_TEMP":290,"ACQ_TIME":20.0,
               "SCAN_PIXELS":512,"SCAN_FILE":"","SCAN_TIME":30.0,"SCAN_RANGE":20,
               "SCAN_OFFSET":"","SCAN_ANGLE":10.0,"SCAN_DIR":'up',
@@ -246,6 +246,32 @@ class STMdatabase:
         except Exception as ex:
             print("ErroMsg-----",ex)
             print("ERRO-------"+sql)
+    def execute_sql_fetchOne(self,sql):
+        try:
+            with sqlite3.connect(self.databaseName) as conn:
+                    c = conn.cursor()
+                    data=c.execute(sql)
+                    Value=data.fetchall()[0][0]
+            
+            print("SUCCESS---------"+sql)
+            return Value
+        except Exception as ex:
+            print("ErroMsg-----",ex)
+            print("ERRO-------"+sql)
+            return None
+    @staticmethod
+    def get_list_id(cls,myfile):
+        select_list_id="SELECT List_ID FROM {0} WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
+        listID=cls.execute_sql_fetchOne(select_list_id)
+        return listID
+    @staticmethod
+    def get_time_stamp(cls,myfile):
+        select_time_stamp="SELECT TimeStamp FROM {0} WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
+        timeStamp=cls.execute_sql_fetchOne(select_time_stamp)
+        return  timeStamp
+
+
+
 
 
 
@@ -319,6 +345,7 @@ class STMdatabase:
         except Exception as ex:
             print("ErroMsg",ex)
             print("ERRO"+"Insert table is failed")
+
             
 
 
@@ -359,7 +386,7 @@ class STMdatabase:
         self.insert_table(table,DATA_LIST,STMdateList)
 
 
-class utilize:
+class utils:
     def string_to_timestamp(date_string, format_string='%Y-%m-%d %H:%M:%S'):
         try:
             # Parse the date string into a datetime object
@@ -386,12 +413,20 @@ class STMdata:
     def __init__(self,filePath: str) -> None:
         self.filePath=filePath
         self.dataList=STMdatabase.STMDATALIST
+        self.list_ID=1
+        self.TimeStamp=1.0
+        try:
+            self.list_ID=STMdatabase.get_list_id(cls=STMdatabase("STMdata.db"),myfile=self.filePath)
+            self.TimeStamp=STMdatabase.get_time_stamp(cls=STMdatabase("STMdata.db"),myfile=self.filePath)
+        except Exception as ex:
+            print("ErroMsg",ex)
+            print("ERRO"+"the file is not in datalist")
+
     def get_data_list(self)->STMdatabase.STMDATALIST:
         self.dataList["UpdateFilePath"]=self.filePath
         file=[f for f in self.filePath.split(".")]
         filetype=file[-1]
-        
-        platform = utilize.get_platform()
+        platform = utils.get_platform()
         if platform=="Windows":
             fileData=[f for f in file[-2].split("\\")]
         else:
@@ -400,11 +435,19 @@ class STMdata:
         self.dataList["Name"]=fileName
         self.dataList["Type"]=filetype
         return self.dataList
+    def get_data_info(self)->dict:
+        list_ID=STMdatabase.get_list_id(self.filePath)
+        TimeStamp=STMdatabase.get_time_stamp(self.filePath)
+    def get_data_value(self)->dict:
+        pass
+        
+       
 
     
 class STMimage(STMdata):
     def __init__(self, filePath: str) -> None:
         super().__init__(filePath)
+        self.imageInfo=STMdatabase.STMIMAGEINFO
     def get_data_list(self) -> STMdatabase.STMDATALIST:
         format_string='%d.%m.%Y %H:%M:%S'
         SXMfile=pySPM.SXM(self.filePath)
@@ -417,7 +460,7 @@ class STMimage(STMdata):
         REC_Data=header['REC_DATE'][0][0]
         REC_Time=header['REC_TIME'][0][0]
         date_time_s=REC_Data+" "+REC_Time
-        timestamp = utilize.string_to_timestamp(date_time_s,format_string)
+        timestamp = utils.string_to_timestamp(date_time_s,format_string)
         self.dataList["TimeStamp"]=timestamp
         self.dataList["Date"]=REC_Data
         self.dataList["Time"]=REC_Time
@@ -426,6 +469,44 @@ class STMimage(STMdata):
         self.dataList["PosX_nm"]=round(float(Pos[0])*1e9,3)
         self.dataList["PosY_nm"]=round(float(Pos[1])*1e9,3)
         return super().get_data_list()
+    def get_data_info(self)->STMdatabase.STMIMAGEINFO:
+        SXMfile=pySPM.SXM(self.filePath)
+        header=SXMfile.header
+        self.imageInfo["List_ID"]=self.list_ID
+        self.imageInfo["TIME_STAMP"]=self.TimeStamp
+        imagekeys=list(self.imageInfo.keys())
+        raws=""
+        cols=""
+        try:
+            print(self.imageInfo)  
+            for i,value in enumerate(list(header.values())[:]):
+                raws=""
+                for raw in value:
+                    cols=""
+                    for col in raw:
+                        if cols!="":
+                            cols=cols+" "+col
+                        else:
+                            cols=col
+                    if raws!="":
+                        raws=raws+' '+cols
+                    else:
+                        raws=cols
+                     
+                    print(i+2,"Value-----",raws)    
+                    self.imageInfo[imagekeys[i+2]]=raws
+            print(self.imageInfo) 
+        except:
+            print("ERRO------- get data information is failed and the file is ",self.filePath)
+        finally:
+            return  self.imageInfo
+    def get_data_value():
+        pass
+        
+
+
+         
+
     
     
 
