@@ -242,7 +242,7 @@ class STMdatabase:
             with sqlite3.connect(self.databaseName) as conn:
                     c = conn.cursor()
                     c.execute(sql,arg)
-            print("SUCCESS---------"+sql)
+            print("SUCCESS---------"+sql,arg)
         except Exception as ex:
             print("ErroMsg-----",ex)
             print("ERRO-------"+sql)
@@ -478,7 +478,6 @@ class STMimage(STMdata):
         raws=""
         cols=""
         try:
-            print(self.imageInfo)  
             for i,value in enumerate(list(header.values())[:]):
                 raws=""
                 for raw in value:
@@ -492,15 +491,13 @@ class STMimage(STMdata):
                         raws=raws+' '+cols
                     else:
                         raws=cols
-                     
-                    print(i+2,"Value-----",raws)    
+                      
                     self.imageInfo[imagekeys[i+2]]=raws
-            print(self.imageInfo) 
         except:
             print("ERRO------- get data information is failed and the file is ",self.filePath)
         finally:
             return  self.imageInfo
-    def get_data_value():
+    def get_data_value()->STMdatabase.STMIMAGEVALUE:
         pass
         
 
