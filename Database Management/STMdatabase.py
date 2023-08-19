@@ -527,6 +527,7 @@ class STMimage(STMdata):
             return  self.imageInfo
         
     def get_data_value(self)->STMdatabase.STMIMAGEVALUE:
+        
         super().get_data_value()
         SXMfile=pySPM.SXM(self.filePath)
         header=SXMfile.header
