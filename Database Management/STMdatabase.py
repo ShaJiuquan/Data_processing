@@ -2,6 +2,7 @@ import sqlite3
 import pySPM
 import datetime
 import platform
+import numpy as np
 
 
 class STMdatabase:
@@ -26,7 +27,7 @@ class STMdatabase:
               "Signals_Oversampling":"","Animations_Period":"","Indicators_Period":"",
               "Measurements_Period":"","DATA_INFO":""}
     STMIMAGEVALUE={"Info_ID":1,"List_ID":1,"TIME_STAMP":1,"Z_forward":"",
-                  "Z_backward" :"","Current_forward":"","LIY_1_omega_forward":"",
+                  "Z_backward" :"","Current_forward":"","Current_backward":"","LIY_1_omega_forward":"",
                   "LIY_1_omega_backward":""}
     STMSPECINFO={"List_ID":1,"TIME_STAMP":2.0,"Date":"11.08.2022 12:15:27","User":"NaN",
                  "X_m":"91.6774E-9","Y_m":"91.6774E-9","Z_m":"91.6774E-9","Z_offset":"0",
@@ -157,6 +158,7 @@ class STMdatabase:
                                         Info_ID INTEGER,
                                         List_ID INTEGER,
                                         TIME_STAMP  REAL,
+                                        
                                         Z_forward   BLOB,
                                         Z_backward   BLOB,
                                         Current_forward   BLOB,
@@ -269,6 +271,18 @@ class STMdatabase:
         select_time_stamp="SELECT TimeStamp FROM {0} WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
         timeStamp=cls.execute_sql_fetchOne(select_time_stamp)
         return  timeStamp
+    @staticmethod
+    def get_info_id(cls,myfile):
+        listID=cls.get_list_id(cls,myfile)
+        if myfile.endswith("sxm"):
+            select_info_id="SELECT Info_ID FROM {0} WHERE List_ID='{1}'".format(cls.IMAGE_INFO_NAME,listID)
+        elif myfile.endswith("dat"):
+            select_info_id="SELECT Info_ID FROM {0} WHERE List_ID='{1}'".format(cls.SPEC_INFO_NAME,listID)
+        elif myfile.endswith("3ds"):
+            select_info_id="SELECT Info_ID FROM {0} WHERE List_ID='{1}'".format(cls.GRID_INFO_NAME,listID)
+
+        info_id=cls.execute_sql_fetchOne(select_info_id)
+        return  info_id
 
 
 
@@ -413,14 +427,10 @@ class STMdata:
     def __init__(self,filePath: str) -> None:
         self.filePath=filePath
         self.dataList=STMdatabase.STMDATALIST
-        self.list_ID=1
-        self.TimeStamp=1.0
-        try:
-            self.list_ID=STMdatabase.get_list_id(cls=STMdatabase("STMdata.db"),myfile=self.filePath)
-            self.TimeStamp=STMdatabase.get_time_stamp(cls=STMdatabase("STMdata.db"),myfile=self.filePath)
-        except Exception as ex:
-            print("ErroMsg",ex)
-            print("ERRO"+"the file is not in datalist")
+        self.list_ID=None
+        self.TimeStamp=None
+        self.info_ID=None
+        
 
     def get_data_list(self)->STMdatabase.STMDATALIST:
         self.dataList["UpdateFilePath"]=self.filePath
@@ -435,11 +445,23 @@ class STMdata:
         self.dataList["Name"]=fileName
         self.dataList["Type"]=filetype
         return self.dataList
-    def get_data_info(self)->dict:
-        list_ID=STMdatabase.get_list_id(self.filePath)
-        TimeStamp=STMdatabase.get_time_stamp(self.filePath)
-    def get_data_value(self)->dict:
-        pass
+    def get_data_info(self,databaseName="STMdata.db"):
+        try:
+            self.list_ID=STMdatabase.get_list_id(cls=STMdatabase(databaseName),myfile=self.filePath)
+            self.TimeStamp=STMdatabase.get_time_stamp(cls=STMdatabase(databaseName),myfile=self.filePath)
+        except Exception as ex:
+            print("ErroMsg",ex)
+            print("ERRO"+"the file is not in datalist")
+    def get_data_value(self,databaseName="STMdata.db"):
+        try:
+            self.list_ID=STMdatabase.get_list_id(cls=STMdatabase(databaseName),myfile=self.filePath)
+            self.TimeStamp=STMdatabase.get_time_stamp(cls=STMdatabase(databaseName),myfile=self.filePath)
+            self.info_ID=STMdatabase.get_info_id(cls=STMdatabase(databaseName),myfile=self.filePath)
+        except Exception as ex:
+            print("ErroMsg",ex)
+            print("ERRO"+"the file is not in datalist")
+        
+        
         
        
 
@@ -448,6 +470,9 @@ class STMimage(STMdata):
     def __init__(self, filePath: str) -> None:
         super().__init__(filePath)
         self.imageInfo=STMdatabase.STMIMAGEINFO
+        self.imageValue=STMdatabase.STMIMAGEVALUE
+
+
     def get_data_list(self) -> STMdatabase.STMDATALIST:
         format_string='%d.%m.%Y %H:%M:%S'
         SXMfile=pySPM.SXM(self.filePath)
@@ -469,7 +494,10 @@ class STMimage(STMdata):
         self.dataList["PosX_nm"]=round(float(Pos[0])*1e9,3)
         self.dataList["PosY_nm"]=round(float(Pos[1])*1e9,3)
         return super().get_data_list()
+    
+
     def get_data_info(self)->STMdatabase.STMIMAGEINFO:
+        super().get_data_info()
         SXMfile=pySPM.SXM(self.filePath)
         header=SXMfile.header
         self.imageInfo["List_ID"]=self.list_ID
@@ -497,8 +525,43 @@ class STMimage(STMdata):
             print("ERRO------- get data information is failed and the file is ",self.filePath)
         finally:
             return  self.imageInfo
-    def get_data_value()->STMdatabase.STMIMAGEVALUE:
-        pass
+        
+    def get_data_value(self)->STMdatabase.STMIMAGEVALUE:
+        super().get_data_value()
+        SXMfile=pySPM.SXM(self.filePath)
+        header=SXMfile.header
+        self.imageValue["Info_ID"]=self.info_ID
+        self.imageValue["List_ID"]=self.list_ID
+        self.imageValue["TIME_STAMP"]=self.TimeStamp
+        h=header["DATA_INFO"][0]
+        i=h.index("Name")
+        channels=[]
+        for z in header["DATA_INFO"][1:]:
+            channels.append(z[i]) 
+        STMKeys=["Z","Current","LIY_1_omega"]
+     
+        
+        for channel in channels:
+          
+            if channel in STMKeys:
+                try:
+                    image_f=SXMfile.get_channel(channel,direction="forward")
+                    image=np.array(image_f.pixels)
+                    array_bytes_f = image.tobytes()
+                    print(channel+"_forward")
+                    self.imageValue[channel+"_forward"]=sqlite3.Binary(array_bytes_f)
+                    image_b=SXMfile.get_channel(channel,direction="backward")
+                    image=np.array(image_b.pixels)
+                    array_bytes_b = image.tobytes()
+                    print(channel+"_backward")
+                    self.imageValue[channel+"_backward"]=sqlite3.Binary(array_bytes_b)
+                
+                    
+                except:
+                    print("ERRO------- get data information is failed and the file is ",self.filePath)
+                    
+               
+        return  self.imageValue
         
 
 
