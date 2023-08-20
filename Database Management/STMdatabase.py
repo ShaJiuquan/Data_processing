@@ -3,6 +3,8 @@ import pySPM
 import datetime
 import platform
 import numpy as np
+import pandas as pd
+import nanonispy as nap
 
 
 class STMdatabase:
@@ -341,6 +343,10 @@ class STMdatabase:
         self.creat_table(tableName=self.GRID_INFO_NAME,creat_table_sql=self.CREATE_GRID_INFO_SQL)
         
 
+
+
+
+
     def drop_creat_GridValue_table(self)->None:
         self.drop_table(self.GRID_VALUE_NAME)
         self.creat_table(tableName=self.GRID_VALUE_NAME,creat_table_sql=self.CREATE_GRID_VALUE_SQL)
@@ -527,7 +533,7 @@ class STMimage(STMdata):
             return  self.imageInfo
         
     def get_data_value(self)->STMdatabase.STMIMAGEVALUE:
-        
+
         super().get_data_value()
         SXMfile=pySPM.SXM(self.filePath)
         header=SXMfile.header
@@ -563,6 +569,279 @@ class STMimage(STMdata):
                     
                
         return  self.imageValue
+    
+class STMspec(STMdata):
+    def __init__(self, filePath: str) -> None:
+        super().__init__(filePath)
+        self.specInfo=STMdatabase.STMSPECINFO
+        self.specValue=STMdatabase.STMSPECVALUE
+
+
+    def get_data_list(self) -> STMdatabase.STMDATALIST:
+        format_string='%d.%m.%Y %H:%M:%S'            
+        filePath=self.filePath
+        Notfound=1
+        skiprows=13
+        while Notfound:
+            df_h=pd.read_csv(filePath,sep="\t",nrows=skiprows)
+
+            dic_key=df_h[df_h.keys()]["Experiment"][skiprows-1]
+
+            if dic_key!= "[DATA]":
+                Notfound=1
+                skiprows+=1
+            else:
+                Notfound=0
+                df_h=pd.read_csv(filePath,sep="\t",nrows=skiprows)
+
+        file=[f for f in filePath.split(".")]
+        filetype=file[-1]
+        fileName=[f for f in file[-2].split("\\")][-1]
+        self.dataList["Name"]=fileName
+        self.dataList["UpdateFilePath"]=self.filePath
+        x=df_h["bias spectroscopy"][2]
+        y=df_h["bias spectroscopy"][3]
+        z=df_h["bias spectroscopy"][4]
+        date=df_h["bias spectroscopy"][0]
+        [d,t]=[d for d in date.split(" ")]
+        date_time_s=d+" "+t
+        timestamp = utils.string_to_timestamp(date_time_s,format_string)
+        self.dataList["Date"]=d
+        self.dataList["Time"]=t
+        self.dataList["TimeStamp"]=timestamp
+        self.dataList["Type"]=filetype
+        self.dataList["PosX_nm"]=round(float(x)*1e9,3)
+        self.dataList["PosY_nm"]=round(float(y)*1e9,3)
+        Notfound=1
+        skiprows=20
+        while Notfound:
+            df_d=pd.read_table(filePath,sep="\t",skiprows=skiprows)
+            Keys=df_d.keys()
+            if Keys[0]!= "Bias calc (V)":
+                Notfound=1
+                skiprows-=1
+            else:
+                df_d=pd.read_table(filePath,sep="\t",skiprows=skiprows)
+                Keys=df_d.keys()
+                Notfound=0
+                I=df_d[Keys[1]]
+                X=np.array(df_d[Keys[0]])        
+                Bias=X[0]
+                Curr=I[0]
+                self.dataList["Bias_V"]=round(float(Bias),2)
+                self.dataList["Current_pA"]=round(float(Curr)*1e12,1)
+        return super().get_data_list()
+    
+
+    def get_data_info(self)->STMdatabase.STMSPECINFO:
+        super().get_data_info()
+        self.specInfo["List_ID"]=self.list_ID
+        self.specInfo["TIME_STAMP"]=self.TimeStamp           
+        filePath=self.filePath
+        Notfound=1
+        skiprows=10
+        try:
+            while Notfound:
+                df_h=pd.read_csv(filePath,sep="\t",nrows=skiprows)
+                dic_key=df_h[df_h.keys()]["Experiment"][skiprows-1]
+                if dic_key!= "[DATA]":
+                    Notfound=1
+                    skiprows+=1
+                else:
+                    Notfound=0
+                    df_h=pd.read_csv(filePath,sep="\t",nrows=skiprows)
+            Values=df_h["bias spectroscopy"][0:-1]
+            imagekeys=list(self.specInfo.keys())
+            for i,value in enumerate(Values):
+                        
+                self.specInfo[imagekeys[i+2]]=value
+        except:
+            print(self.filePath)
+        finally:
+            return self.specInfo
+    
+
+    def get_data_value(self)->STMdatabase.STMSPECVALUE:
+
+        super().get_data_value()
+        skiprows=21
+        Notfound=1
+        self.specValue["Info_ID"]=self.info_ID
+        self.specValue["List_ID"]=self.list_ID
+        self.specValue["TIME_STAMP"]=self.TimeStamp
+        while Notfound:
+            df_d=pd.read_table(self.filePath,sep="\t",skiprows=skiprows)
+            Keys=df_d.keys()
+            if Keys[0]!= "Bias calc (V)":
+                Notfound=1
+                skiprows-=1
+            else:
+                df_d=pd.read_table(self.filePath,sep="\t",skiprows=skiprows)
+                channels=list(df_d.keys())
+                Notfound=0
+
+
+        STMSpecKeys=['Bias calc (V)', 'Current (A)',  'LIY 1 omega (A)', 'Current [bwd] (A)',  'LIY 1 omega [bwd] (A)']
+        KeySpec={'Bias calc (V)':"Bias", 'Current (A)':"Current_forward",  'LIY 1 omega (A)':"LIY_1_omega_forward", 'Current [bwd] (A)':"Current_backward",  'LIY 1 omega [bwd] (A)':"LIY_1_omega_backward"}
+        for channel in channels:
+            if channel in STMSpecKeys:
+                try:
+                    SpecValue=np.array(df_d[channel])
+                    array_bytes = SpecValue.tobytes()
+                    self.specValue[KeySpec[channel]]= sqlite3.Binary(array_bytes)
+                except:
+                    pass
+        
+        return self.specValue
+
+
+
+
+class STMgrid(STMdata):
+    def __init__(self, filePath: str) -> None:
+        super().__init__(filePath)
+        self.gridInfo=STMdatabase.STMGRIDINFO
+        self.gridValue=STMdatabase.STMGRIDVALUE
+
+
+
+    def get_data_list(self) -> STMdatabase.STMDATALIST:
+
+        format_string='%d.%m.%Y %H:%M:%S'
+        try:
+            grid = nap.read.Grid(self.filePath) 
+            sweep=grid._derive_sweep_signal()
+            dic_keys = grid._load_data().keys()
+            list_data=list(grid._load_data())
+            params=grid._load_data()['params']
+            head = grid.read_raw_header(byte_offset=745)
+            df=pd.DataFrame([x.split(",") for x in head.split("\r\n")])
+            Res=[j for j in df[0][0].split("=")]
+            Set=[j for j in df[0][1].split(";")]
+            Point=[j for j in df[0][8].split("=")]
+            Date=[j for j in df[0][12].split("=")]
+            DateTime=[j for j in Date[1].split(" ")]
+            Recdate=DateTime[0][1:]
+            Rectime=DateTime[1][:-1]
+            Resxy=[j for j in Res[1].split("x")]
+            xpoints=[j for j in Set[0].split("=")]
+
+            Resoltion=[float(Resxy[0][1:]),float(Resxy[1][:-1]),float(Point[1])]
+            position=[float(xpoints[1]),float(Set[1])]
+            size=[float(Set[2]),float(Set[3])]
+            date_time_s=Recdate+" "+Rectime
+            timestamp = utils.string_to_timestamp(date_time_s,format_string)
+            self.dataList["TimeStamp"]=timestamp
+            self.dataList["UpdateFilePath"]=self.filePath
+            self.dataList["Date"]=Recdate
+            self.dataList["Time"]=Rectime
+            self.dataList["Bias_V"]=round(float(0),2)
+            self.dataList["Current_pA"]=round(float(0)*1e12,1)
+            
+            self.dataList["PosX_nm"]=round(float(position[0])*1e9,3)
+            self.dataList["PosY_nm"]=round(float(position[1])*1e9,3)
+        except:
+           
+            self.dataList["TimeStamp"]=0
+            self.dataList["UpdateFilePath"]=""
+            self.dataList["Date"]=0
+            self.dataList["Time"]=0
+            self.dataList["Bias_V"]=0
+            self.dataList["Current_pA"]=0
+            self.dataList["Type"]="3ds"
+            self.dataList["PosX_nm"]=0
+            self.dataList["PosY_nm"]=0
+        finally:
+            return super().get_data_list()
+        
+
+    def get_data_info(self)->STMdatabase.STMGRIDINFO:
+        super().get_data_info()
+        self.gridInfo["List_ID"]=self.list_ID
+        self.gridInfo["TIME_STAMP"]=self.TimeStamp   
+        try:
+            grid = nap.read.Grid(self.filePath) 
+            sweep=grid._derive_sweep_signal()
+            dic_keys = grid._load_data().keys()
+            list_data=list(grid._load_data())
+            params=grid._load_data()['params']
+            data=grid._load_data()['LIY 1 omega (A)']
+            head = grid.read_raw_header(byte_offset=850)
+            df=pd.DataFrame([x.split(",") for x in head.split("\r\n")])
+            heads=[]
+            for dfi in df[0]:
+                if dfi==":HEADER_END:":
+                    break
+                heads.append(dfi) 
+            ovalue=[]
+            for hs in heads:
+                hvalue=[x.split(",") for x in hs.split("=")]
+                ovalue.append(hvalue[1][0])
+            imagekeys=list(self.gridInfo.keys())
+            for i,value in enumerate(ovalue):
+                        
+                self.gridInfo[imagekeys[i+2]]=value
+        except:
+            print(self.filePath)
+        finally:
+            return self.gridInfo
+        
+
+
+    def get_data_value(self)->STMdatabase.STMGRIDVALUE:
+
+        super().get_data_value()
+        self.gridValue["Info_ID"]=self.info_ID
+        self.gridValue["List_ID"]=self.list_ID
+        self.gridValue["TIME_STAMP"]=self.TimeStamp
+        
+        try:
+            
+            grid = nap.read.Grid(self.filePath) 
+            sweep=grid._derive_sweep_signal()
+            dic_keys = grid._load_data().keys()
+            list_data=list(grid._load_data())
+            params=grid._load_data()['params']
+            data=grid._load_data()['LIY 1 omega (A)']
+            head = grid.read_raw_header(byte_offset=850)
+            df=pd.DataFrame([x.split(",") for x in head.split("\r\n")])
+            nparams=np.array(params)
+            heads=[]
+            for dfi in df[0]:
+                if dfi==":HEADER_END:":
+                    break
+                heads.append(dfi)
+            ovalue=[]
+            for hs in heads:
+                hvalue=[x.split(",") for x in hs.split("=")]
+                ovalue.append(hvalue[1][0])
+            channels=[x.split(",") for x in ovalue[9][1:-1].split(";")]
+
+            STMSpecKeys=['Current (A)', 'LIX 1 omega (A)',  'LIY 1 omega (A)']
+            KeySpec={'Current (A)':"Current ", 'LIX 1 omega (A)':"LIX_1_omega",  'LIY 1 omega (A)':"LIY_1_omega", 'params':"Para","Bias":"Bias"}
+            SpecValue=np.array(grid._load_data()["params"])
+            array_bytes = SpecValue.tobytes()
+            self.gridValue[KeySpec["params"]]=sqlite3.Binary(array_bytes)
+            SpecValue=np.array(sweep)
+            array_bytes = SpecValue.tobytes()
+            self.gridValue[KeySpec["Bias"]]=sqlite3.Binary(array_bytes)
+            for channel in channels:
+                print(channel)
+                key_value= channel[0]
+                if key_value in STMSpecKeys:
+                    try:
+                        SpecValue=np.array(grid._load_data()[key_value])
+                        array_bytes = SpecValue.tobytes()
+                        self.gridValue[KeySpec[key_value]]=sqlite3.Binary(array_bytes)
+                        
+                    except:
+                        print("+++Erro------------------------------------------------")
+           
+        except:
+            print(self.filePath)
+        finally: return self.gridValue
+
+    
         
 
 
