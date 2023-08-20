@@ -45,7 +45,7 @@ class STMdatabase:
                  "Channels":"-211.889E-9","Delay":"Gaussian","Experiment":"3","Start_time":"","End_time":"",
                  "User":"Gaussian","comment":"3","Current":"","Calibration":"","Offset":"","Gain":""}
     STMGRIDVALUE={"Info_ID":1,"List_ID":1,"TIME_STAMP":1,"Para":"","Current":"",
-                  "Bias":"","LIX_1_omega ":"","LIY_1_omega ":""}
+                  "Bias":"","LIX_1_omega":"","LIY_1_omega":""}
     
     CREATE_SPEC_VALUE_SQL = """ CREATE TABLE IF NOT EXISTS {0} (
                                         Data_ID   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,11 +92,11 @@ class STMdatabase:
                                         LIX_1_omega   BLOB,
                                         LIY_1_omega   BLOB,
                                         FOREIGN KEY (List_ID) 
-                                            REFERENCES STMSpecInfo (List_ID) 
+                                            REFERENCES STMGridInfo (List_ID) 
                                                 ON DELETE CASCADE 
                                                 ON UPDATE NO ACTION         
                                         FOREIGN KEY (Info_ID) 
-                                            REFERENCES STMSpecInfo(Info_ID) 
+                                            REFERENCES STMGridInfo(Info_ID) 
                                                 ON DELETE CASCADE 
                                                 ON UPDATE NO ACTION
 
@@ -781,7 +781,9 @@ class STMgrid(STMdata):
             for i,value in enumerate(ovalue):
                         
                 self.gridInfo[imagekeys[i+2]]=value
-        except:
+        except Exception as ex:
+            print("+++Erro------------------------------------------------")
+            print("ErroMsg",ex)
             print(self.filePath)
         finally:
             return self.gridInfo
@@ -796,16 +798,10 @@ class STMgrid(STMdata):
         self.gridValue["TIME_STAMP"]=self.TimeStamp
         
         try:
-            
             grid = nap.read.Grid(self.filePath) 
             sweep=grid._derive_sweep_signal()
-            dic_keys = grid._load_data().keys()
-            list_data=list(grid._load_data())
-            params=grid._load_data()['params']
-            data=grid._load_data()['LIY 1 omega (A)']
             head = grid.read_raw_header(byte_offset=850)
             df=pd.DataFrame([x.split(",") for x in head.split("\r\n")])
-            nparams=np.array(params)
             heads=[]
             for dfi in df[0]:
                 if dfi==":HEADER_END:":
@@ -818,7 +814,7 @@ class STMgrid(STMdata):
             channels=[x.split(",") for x in ovalue[9][1:-1].split(";")]
 
             STMSpecKeys=['Current (A)', 'LIX 1 omega (A)',  'LIY 1 omega (A)']
-            KeySpec={'Current (A)':"Current ", 'LIX 1 omega (A)':"LIX_1_omega",  'LIY 1 omega (A)':"LIY_1_omega", 'params':"Para","Bias":"Bias"}
+            KeySpec={'Current (A)':"Current", 'LIX 1 omega (A)':"LIX_1_omega",  'LIY 1 omega (A)':"LIY_1_omega", 'params':"Para","Bias":"Bias"}
             SpecValue=np.array(grid._load_data()["params"])
             array_bytes = SpecValue.tobytes()
             self.gridValue[KeySpec["params"]]=sqlite3.Binary(array_bytes)
@@ -826,20 +822,23 @@ class STMgrid(STMdata):
             array_bytes = SpecValue.tobytes()
             self.gridValue[KeySpec["Bias"]]=sqlite3.Binary(array_bytes)
             for channel in channels:
-                print(channel)
                 key_value= channel[0]
                 if key_value in STMSpecKeys:
-                    try:
+                    try: 
                         SpecValue=np.array(grid._load_data()[key_value])
                         array_bytes = SpecValue.tobytes()
                         self.gridValue[KeySpec[key_value]]=sqlite3.Binary(array_bytes)
                         
-                    except:
+                    except Exception as ex:
                         print("+++Erro------------------------------------------------")
+                        print("ErroMsg",ex)
            
-        except:
+        except Exception as ex:
+            print("+++Erro------------------------------------------------")
+            print("ErroMsg",ex)
             print(self.filePath)
-        finally: return self.gridValue
+        finally: 
+            return self.gridValue
 
     
         
