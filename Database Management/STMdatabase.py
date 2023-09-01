@@ -273,6 +273,13 @@ class STMdatabase:
         select_time_stamp="SELECT TimeStamp FROM {0} WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
         timeStamp=cls.execute_sql_fetchOne(select_time_stamp)
         return  timeStamp
+    
+    @staticmethod
+    def get_image_pix(cls,myfile):
+        listID=cls.get_list_id(cls,myfile)
+        sql_pix="SELECT SCAN_PIXELS from {0} WHERE List_ID='{1}'".format(cls.IMAGE_INFO_NAME,listID)
+        pix=cls.execute_sql_fetchOne(sql_pix)
+        return  pix
     @staticmethod
     def get_info_id(cls,myfile):
         listID=cls.get_list_id(cls,myfile)
@@ -430,12 +437,13 @@ class utils:
         return platforms[platform]
 
 class STMdata: 
-    def __init__(self,filePath: str) -> None:
+    def __init__(self,filePath: str,DatabaseName="STMdata.db") -> None:
         self.filePath=filePath
         self.dataList=STMdatabase.STMDATALIST
         self.list_ID=None
         self.TimeStamp=None
         self.info_ID=None
+        self.DatabaseName=DatabaseName
         
 
     def get_data_list(self)->STMdatabase.STMDATALIST:
@@ -451,14 +459,16 @@ class STMdata:
         self.dataList["Name"]=fileName
         self.dataList["Type"]=filetype
         return self.dataList
-    def get_data_info(self,databaseName="STMdata.db"):
+    def get_data_info(self):
+        databaseName=self.DatabaseName
         try:
             self.list_ID=STMdatabase.get_list_id(cls=STMdatabase(databaseName),myfile=self.filePath)
             self.TimeStamp=STMdatabase.get_time_stamp(cls=STMdatabase(databaseName),myfile=self.filePath)
         except Exception as ex:
             print("ErroMsg",ex)
             print("ERRO"+"the file is not in datalist")
-    def get_data_value(self,databaseName="STMdata.db"):
+    def get_data_value(self):
+        databaseName=self.DatabaseName
         try:
             self.list_ID=STMdatabase.get_list_id(cls=STMdatabase(databaseName),myfile=self.filePath)
             self.TimeStamp=STMdatabase.get_time_stamp(cls=STMdatabase(databaseName),myfile=self.filePath)
@@ -477,6 +487,21 @@ class STMimage(STMdata):
         super().__init__(filePath)
         self.imageInfo=STMdatabase.STMIMAGEINFO
         self.imageValue=STMdatabase.STMIMAGEVALUE
+        self.pix=None
+        self.data=None
+
+
+
+    def get_pix(self):
+        databaseName=self.DatabaseName
+        try:
+            Pix_s=STMdatabase.get_image_pix(cls=STMdatabase(databaseName),myfile=self.filePath)
+            self.pix=[int(x) for x in Pix_s.split(" ") ]
+        except Exception as ex:
+            print("ErroMsg",ex)
+            print("ERRO"+"the file is not in datalist")
+        
+
 
 
     def get_data_list(self) -> STMdatabase.STMDATALIST:

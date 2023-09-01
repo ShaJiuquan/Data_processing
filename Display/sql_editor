@@ -1,0 +1,7 @@
+-- database: /Users/jiuquansha/dev/data_processing/code/Data_processing/STMdata.db
+
+-- Use the ▷ button in the top right corner to run the entire file.
+
+SELECT SCAN_PIXELS from STMimageInfo;
+SELECT Z_forward from STMimageValue
+
