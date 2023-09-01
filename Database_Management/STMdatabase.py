@@ -277,23 +277,37 @@ class STMdatabase:
     @staticmethod
     def get_image_pix(cls,myfile):
         listID=cls.get_list_id(cls,myfile)
-        sql_pix="SELECT SCAN_PIXELS from {0} WHERE List_ID='{1}'".format(cls.IMAGE_INFO_NAME,listID)
-        pix=cls.execute_sql_fetchOne(sql_pix)
+        sql_pix="SELECT SCAN_PIXELS from {0} WHERE List_ID={1}".format(cls.IMAGE_INFO_NAME,listID)
+        Pix_s=cls.execute_sql_fetchOne(sql_pix)
+        pix=[int(x) for x in Pix_s.split(" ") ]
+        print(pix)
         return  pix
+    
+
+    @staticmethod
+    def get_image_value(cls,myfile,channel="Z_forward"):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            pix=cls.get_image_pix(cls,myfile)
+            sql_image_value="SELECT {0} from {1} WHERE List_ID={2}".format(channel,cls.IMAGE_VALUE_NAME,listID)
+            image_blob=cls.execute_sql_fetchOne(sql_image_value)
+            image=np.frombuffer(image_blob, dtype=float).reshape((pix[0], pix[1]))
+            return  image
+        except Exception as ex:
+            print("ERRO---------------get_image_value",ex)
+    
     @staticmethod
     def get_info_id(cls,myfile):
         listID=cls.get_list_id(cls,myfile)
         if myfile.endswith("sxm"):
-            select_info_id="SELECT Info_ID FROM {0} WHERE List_ID='{1}'".format(cls.IMAGE_INFO_NAME,listID)
+            select_info_id="SELECT Info_ID FROM {0} WHERE List_ID={1}".format(cls.IMAGE_INFO_NAME,listID)
         elif myfile.endswith("dat"):
-            select_info_id="SELECT Info_ID FROM {0} WHERE List_ID='{1}'".format(cls.SPEC_INFO_NAME,listID)
+            select_info_id="SELECT Info_ID FROM {0} WHERE List_ID={1}".format(cls.SPEC_INFO_NAME,listID)
         elif myfile.endswith("3ds"):
-            select_info_id="SELECT Info_ID FROM {0} WHERE List_ID='{1}'".format(cls.GRID_INFO_NAME,listID)
+            select_info_id="SELECT Info_ID FROM {0} WHERE List_ID={1}".format(cls.GRID_INFO_NAME,listID)
 
         info_id=cls.execute_sql_fetchOne(select_info_id)
         return  info_id
-
-
 
 
 
@@ -483,8 +497,8 @@ class STMdata:
 
     
 class STMimage(STMdata):
-    def __init__(self, filePath: str) -> None:
-        super().__init__(filePath)
+    def __init__(self, filePath: str,DatabaseName="STMdata.db") -> None:
+        super().__init__(filePath,DatabaseName=DatabaseName)
         self.imageInfo=STMdatabase.STMIMAGEINFO
         self.imageValue=STMdatabase.STMIMAGEVALUE
         self.pix=None
@@ -500,6 +514,17 @@ class STMimage(STMdata):
         except Exception as ex:
             print("ErroMsg",ex)
             print("ERRO"+"the file is not in datalist")
+
+    def get_image_value(self,channel="Z_forward"):
+        databaseName=self.DatabaseName
+        try:
+            image=STMdatabase.get_image_value(cls=STMdatabase(databaseName),myfile=self.filePath,channel=channel)
+            return image
+        except Exception as ex:
+            print("ErroMsg",ex)
+            print("ERRO"+"the file is not in datalist")
+
+            
         
 
 

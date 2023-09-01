@@ -3,5 +3,8 @@
 -- Use the ▷ button in the top right corner to run the entire file.
 
 SELECT SCAN_PIXELS from STMimageInfo;
-SELECT Z_forward from STMimageValue
+SELECT Z_forward from STMimageValue;
+SELECT Z_forward from STMimageValue WHERE List_ID=1;
+SELECT SCAN_PIXELS from STMimageInfo WHERE List_ID=1;
+SELECT Z_forward from STMimageValue WHERE List_ID=1
 
