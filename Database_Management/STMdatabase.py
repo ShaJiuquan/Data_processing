@@ -280,7 +280,6 @@ class STMdatabase:
         sql_pix="SELECT SCAN_PIXELS from {0} WHERE List_ID={1}".format(cls.IMAGE_INFO_NAME,listID)
         Pix_s=cls.execute_sql_fetchOne(sql_pix)
         pix=[int(x) for x in Pix_s.split(" ") ]
-        print(pix)
         return  pix
     
 
