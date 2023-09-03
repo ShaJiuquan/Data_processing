@@ -11,3 +11,5 @@ the main task of STM image prcess are denoise, atom finding ,predict spectrum wi
 ### 1.review the introduction section of my review paper
 
 1.the first paragraph-----STM is a powerful tool which can image and manipulate atom and linkage the structural and electronic information in the atomic scale, have revolutionized many fields such as physics, material science and nanotechnology
+
+2.machine learning lattice detect
