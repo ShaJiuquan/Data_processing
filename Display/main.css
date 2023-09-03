@@ -1,0 +1,156 @@
+* {box-sizing: border-box;}
+
+body { 
+margin: 0;
+font-family: Arial, Helvetica, sans-serif;
+}
+
+
+
+
+
+.grid-container {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  gap: 10px;
+  background-color: #e3ecf4;
+  padding: 10px;
+}
+
+
+
+
+
+.grid-container > div {
+  background-color: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgb(103, 74, 74);
+  text-align: center;
+  font-size: 80px;
+}
+
+/* imagegrid */
+
+#imagegrid_container {
+  transform: translateZ(0);  /* this will cause the child with to be relaive to this container */
+  height: 100%;
+  background-color:#eef6fc;
+}
+
+#imagegrid_container_sub {
+  position: auto;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+}
+
+.imagegrid {
+  display: grid;
+  grid-gap: 12px;
+  /*grid-template-columns: auto auto auto auto;*/
+  padding: 10px;
+  
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));  /* repeat(auto-fit, minmax(150px, 1fr)); */
+}
+
+.imagegrid .item {
+  position: relative;
+  padding-top: 100%; /* padding trick directly on the grid item */
+  box-sizing: border-box;
+  background-color: #c9d3dd;
+  border: 1px solid rgb(103, 74, 74);
+  text-align: center;
+  font-size: 80px;
+  
+  
+
+  overflow: hidden; 
+  height: 100%; 
+  width: 100%;
+  border: 1px blue solid; 
+  font-size: 80px;
+  
+  /* scroll-snap-align: start;
+  scroll-margin-top: 12px; */
+}
+
+.imagegrid .item .content {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  overflow: hidden;
+  object-fit: cover; 
+  object-position: center;
+ 
+ 
+}
+
+.imagegrid .item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; 
+  object-position: center;
+}
+
+.imagegrid div.item.active:before {
+  background-color: #2a5aa1;
+  color: white;
+  content: "\2713";
+  font-weight: bold;
+  border: 2px solid #cccccc;
+  border-radius: 50%;
+  position: absolute;
+  margin: 2px;
+  top: -14px;
+  left: -14px;
+  z-index: 1;
+  width: 32px;
+  height: 32px;
+  text-align: center;
+  line-height: 28px;
+  font-size: 19px;
+  transform: scale(1.0);
+}
+
+.imagegrid div.item.active {
+  /* outline: 6px solid #2a5aa1; */
+  box-shadow: 0px 0px 8px 7px  #234b88;
+  transform: scale(0.92);
+}
+
+/* .imagegrid.hover_enabled div.item:not(.active):hover    we do not need the not-active now, because hover_enabled takes care of it */
+.imagegrid.hover_enabled div.item:hover {
+  /* outline: 6px solid #d1607c; */
+  box-shadow: 0px 0px 8px 4px #234b88;
+}
+
+.imagegrid:not(.hover_enabled) div.item:not(.active):hover {
+  /* outline: 4px dashed #e47692; */
+  box-shadow: 0px 0px 8px 4px  #234b88a0;
+}
+
+.imagegrid div.item.active:hover {
+  /* outline: 6px solid #a5475f; */
+  box-shadow: 0px 0px 3px 7px #1c3d6e;
+}
+
+.imagegrid div.item.is-marked:after {
+  background-color: #00d182ac;
+  color: white;
+  content: "\2605";
+  position: absolute;
+  margin: 0px;
+  top: 0px;
+  right: 0px;
+  z-index: 1;
+  width: 28px;
+  height: 28px;
+  text-align: center;
+  line-height: 24px;
+  font-size: 16px;
+}
