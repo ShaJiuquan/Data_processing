@@ -265,9 +265,15 @@ class STMdatabase:
             return None
     @staticmethod
     def get_list_id(cls,myfile):
-        select_list_id="SELECT List_ID FROM {0} WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
-        listID=cls.execute_sql_fetchOne(select_list_id)
-        return listID
+        try:
+            print(cls.databaseName)
+            select_list_id="SELECT List_ID FROM {0} WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
+            listID=cls.execute_sql_fetchOne(select_list_id)
+            return listID
+        except Exception as ex:
+            print("ERRO-----","get_list_id")
+            print("ErroMsg----", ex)
+            print("the databaseName is",cls.databaseName)
     @staticmethod
     def get_time_stamp(cls,myfile):
         select_time_stamp="SELECT TimeStamp FROM {0} WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
