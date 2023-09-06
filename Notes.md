@@ -19,3 +19,7 @@ the main task of STM image prcess are denoise, atom finding ,predict spectrum wi
 ### the task of 5 sep
 
 1. implication of the paper named: moving window local Fourier(Micron(2020)102800)
+### task of 06 sep
+1.read pos and size range from database
+2.try to assess the quality of images
+

@@ -5,4 +5,6 @@
 SELECT * FROM "STMdataLists" where Date="18.11.2022";
 SELECT PosX_nm, PosY_nm from STMdataLists  WHERE UpdateFilePath='../../../STMdata/20221116/SiC028.sxm';
 
+SELECT SCAN_RANGE from STMimageInfo WHERE List_ID=5836;
+
 SELECT SCAN_RANGE from STMimageInfo WHERE List_ID=5836

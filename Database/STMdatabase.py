@@ -250,7 +250,7 @@ class STMdatabase:
         except Exception as ex:
             print("ErroMsg-----",ex)
             print("ERRO-------"+sql)
-    def execute_sql_fetchOne(self,sql):
+    def execute_sql_fetchone(self,sql):
         try:
             with sqlite3.connect(self.databaseName) as conn:
                     c = conn.cursor()
@@ -268,7 +268,7 @@ class STMdatabase:
         try:
             print(cls.databaseName)
             select_list_id="SELECT List_ID FROM {0} WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
-            listID=cls.execute_sql_fetchOne(select_list_id)
+            listID=cls.execute_sql_fetchone(select_list_id)
             return listID
         except Exception as ex:
             print("ERRO-----","get_list_id")
@@ -277,7 +277,7 @@ class STMdatabase:
     @staticmethod
     def get_time_stamp(cls,myfile):
         select_time_stamp="SELECT TimeStamp FROM {0} WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
-        timeStamp=cls.execute_sql_fetchOne(select_time_stamp)
+        timeStamp=cls.execute_sql_fetchone(select_time_stamp)
         return  timeStamp
     
     @staticmethod
@@ -285,7 +285,7 @@ class STMdatabase:
         try:
             listID=cls.get_list_id(cls,myfile)
             sql_pix="SELECT SCAN_PIXELS from {0} WHERE List_ID={1}".format(cls.IMAGE_INFO_NAME,listID)
-            Pix_s=cls.execute_sql_fetchOne(sql_pix)
+            Pix_s=cls.execute_sql_fetchone(sql_pix)
             pix=[int(x) for x in Pix_s.split(" ") ]
             return  pix
         
@@ -297,7 +297,7 @@ class STMdatabase:
         try:
             listID=cls.get_list_id(cls,myfile)
             sql_pos="SELECT PosX_nm  from {0}  WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
-            PosX=cls.execute_sql_fetchOne(sql_pos)
+            PosX=cls.execute_sql_fetchone(sql_pos)
             return  PosX
         except Exception as ex:
             print("ERRO---------------get_pos",ex)
@@ -306,7 +306,7 @@ class STMdatabase:
         try:
             listID=cls.get_list_id(cls,myfile)
             sql_pos="SELECT PosY_nm from {0}  WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
-            PosY=cls.execute_sql_fetchOne(sql_pos)
+            PosY=cls.execute_sql_fetchone(sql_pos)
             return  PosY
         except Exception as ex:
             print("ERRO---------------get_pos",ex)
@@ -317,7 +317,7 @@ class STMdatabase:
         try:
             listID=cls.get_list_id(cls,myfile)
             sql_range="SELECT SCAN_RANGE from {0} WHERE List_ID={1}".format(cls.IMAGE_INFO_NAME,listID)
-            range=cls.execute_sql_fetchOne(sql_range)
+            range=cls.execute_sql_fetchone(sql_range)
             return  range
         except Exception as ex:
             print("ERRO---------------get_size",ex)
@@ -331,7 +331,7 @@ class STMdatabase:
             listID=cls.get_list_id(cls,myfile)
             pix=cls.get_image_pix(cls,myfile)
             sql_image_value="SELECT {0} from {1} WHERE List_ID={2}".format(channel,cls.IMAGE_VALUE_NAME,listID)
-            image_blob=cls.execute_sql_fetchOne(sql_image_value)
+            image_blob=cls.execute_sql_fetchone(sql_image_value)
             image=np.frombuffer(image_blob, dtype=float).reshape((pix[0], pix[1]))
             return  image
         except Exception as ex:
@@ -347,7 +347,7 @@ class STMdatabase:
         elif myfile.endswith("3ds"):
             select_info_id="SELECT Info_ID FROM {0} WHERE List_ID={1}".format(cls.GRID_INFO_NAME,listID)
 
-        info_id=cls.execute_sql_fetchOne(select_info_id)
+        info_id=cls.execute_sql_fetchone(select_info_id)
         return  info_id
 
 
@@ -564,7 +564,8 @@ class STMimage(STMdata):
 
     def get_image_range(self):
         try:
-            self.scan_range=[self.posX-self.scan_size[0], self.posX+self.scan_size[0], self.posY-self.scan_size[1], self.posY+self.scan_size[1]]
+            
+            self.scan_range=[round(self.posX-self.scan_size[0]/2,3), round(self.posX+self.scan_size[0]/2,3), round(self.posY-self.scan_size[1]/2,3), round(self.posY+self.scan_size[1]/2,3)]
             return self.scan_range
         except Exception as ex:
             print("ErroMsg------get_image_range",ex)
@@ -615,8 +616,11 @@ class STMimage(STMdata):
     def get_image_size(self):
         try:
             databaseName=self.DatabaseName
-            self.scan_size=STMdatabase.get_size(cls=STMdatabase(databaseName),myfile=self.filePath)
-            return self.scan_size*1e9
+            scan_size=STMdatabase.get_size(cls=STMdatabase(databaseName),myfile=self.filePath)
+            print(type(scan_size),scan_size)
+            self.scan_size=[float(value)*1e9 for value in scan_size.split(" ")]
+            
+            return self.scan_size
         except Exception as ex:
             print("ErroMsg--get_image_size",ex)
             print("ERRO---get_image_size "+"the file is not in datalist")
@@ -818,6 +822,7 @@ class STMspec(STMdata):
 
 
 class STMgrid(STMdata):
+    
     def __init__(self, filePath: str) -> None:
         super().__init__(filePath)
         self.gridInfo=STMdatabase.STMGRIDINFO
