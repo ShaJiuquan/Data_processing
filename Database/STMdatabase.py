@@ -282,11 +282,47 @@ class STMdatabase:
     
     @staticmethod
     def get_image_pix(cls,myfile):
-        listID=cls.get_list_id(cls,myfile)
-        sql_pix="SELECT SCAN_PIXELS from {0} WHERE List_ID={1}".format(cls.IMAGE_INFO_NAME,listID)
-        Pix_s=cls.execute_sql_fetchOne(sql_pix)
-        pix=[int(x) for x in Pix_s.split(" ") ]
-        return  pix
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            sql_pix="SELECT SCAN_PIXELS from {0} WHERE List_ID={1}".format(cls.IMAGE_INFO_NAME,listID)
+            Pix_s=cls.execute_sql_fetchOne(sql_pix)
+            pix=[int(x) for x in Pix_s.split(" ") ]
+            return  pix
+        
+        except Exception as ex:
+            print("ERRO---------------get_image_pix",ex)
+    
+    @staticmethod
+    def get_pos_X(cls,myfile):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            sql_pos="SELECT PosX_nm  from {0}  WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
+            PosX=cls.execute_sql_fetchOne(sql_pos)
+            return  PosX
+        except Exception as ex:
+            print("ERRO---------------get_pos",ex)
+    @staticmethod
+    def get_pos_Y(cls,myfile):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            sql_pos="SELECT PosY_nm from {0}  WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
+            PosY=cls.execute_sql_fetchOne(sql_pos)
+            return  PosY
+        except Exception as ex:
+            print("ERRO---------------get_pos",ex)
+
+    
+    @staticmethod
+    def get_size(cls,myfile):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            sql_range="SELECT SCAN_RANGE from {0} WHERE List_ID={1}".format(cls.IMAGE_INFO_NAME,listID)
+            range=cls.execute_sql_fetchOne(sql_range)
+            return  range
+        except Exception as ex:
+            print("ERRO---------------get_size",ex)
+    
+    
     
 
     @staticmethod
@@ -463,6 +499,8 @@ class STMdata:
         self.TimeStamp=None
         self.info_ID=None
         self.DatabaseName=DatabaseName
+        self.posX,self.posY=self.get_pos()
+
         
 
     def get_data_list(self)->STMdatabase.STMDATALIST:
@@ -478,14 +516,26 @@ class STMdata:
         self.dataList["Name"]=fileName
         self.dataList["Type"]=filetype
         return self.dataList
+    
+    def get_pos(self):
+        databaseName=self.DatabaseName
+        try:
+            self.posX=STMdatabase.get_pos_X(cls=STMdatabase(databaseName),myfile=self.filePath)
+            self.posY=STMdatabase.get_pos_Y(cls=STMdatabase(databaseName),myfile=self.filePath)
+            return self.posX,self.posY
+        except Exception as ex:
+            print("ErroMsg------get_pos",ex)
+            print("ERRO---get_pos "+ "the file is not in datalist")
+
     def get_data_info(self):
         databaseName=self.DatabaseName
         try:
             self.list_ID=STMdatabase.get_list_id(cls=STMdatabase(databaseName),myfile=self.filePath)
             self.TimeStamp=STMdatabase.get_time_stamp(cls=STMdatabase(databaseName),myfile=self.filePath)
         except Exception as ex:
-            print("ErroMsg",ex)
-            print("ERRO"+"the file is not in datalist")
+            print("ErroMsg------get_data_info",ex)
+            print("ERRO----get_data_info "+"the file is not in datalist")
+
     def get_data_value(self):
         databaseName=self.DatabaseName
         try:
@@ -493,8 +543,8 @@ class STMdata:
             self.TimeStamp=STMdatabase.get_time_stamp(cls=STMdatabase(databaseName),myfile=self.filePath)
             self.info_ID=STMdatabase.get_info_id(cls=STMdatabase(databaseName),myfile=self.filePath)
         except Exception as ex:
-            print("ErroMsg",ex)
-            print("ERRO"+"the file is not in datalist")
+            print("ErroMsg------get_data_value",ex)
+            print("ERRO----get_data_info "+"the file is not in datalist")
         
         
         
@@ -506,19 +556,28 @@ class STMimage(STMdata):
         super().__init__(filePath,DatabaseName=DatabaseName)
         self.imageInfo=STMdatabase.STMIMAGEINFO
         self.imageValue=STMdatabase.STMIMAGEVALUE
-        self.pix=None
+        self.pix=self.get_pix()
+        self.scan_size=self.get_image_size()
+        self.scan_range=self.get_image_range()
         self.data=None
 
 
+    def get_image_range(self):
+        try:
+            self.scan_range=[self.posX-self.scan_size[0], self.posX+self.scan_size[0], self.posY-self.scan_size[1], self.posY+self.scan_size[1]]
+            return self.scan_range
+        except Exception as ex:
+            print("ErroMsg------get_image_range",ex)
+            print("ERRO----get_image_range "+"the file is not in datalist")
 
     def get_pix(self):
         databaseName=self.DatabaseName
         try:
-            Pix_s=STMdatabase.get_image_pix(cls=STMdatabase(databaseName),myfile=self.filePath)
-            self.pix=[int(x) for x in Pix_s.split(" ") ]
+            self.pix=STMdatabase.get_image_pix(cls=STMdatabase(databaseName),myfile=self.filePath)
+            return self.pix
         except Exception as ex:
-            print("ErroMsg",ex)
-            print("ERRO"+"the file is not in datalist")
+            print("ErroMsg------get_pix",ex)
+            print("ERRO----get_pix "+"the file is not in datalist")
 
     def get_image_value(self,channel="Z_forward"):
         databaseName=self.DatabaseName
@@ -526,12 +585,9 @@ class STMimage(STMdata):
             image=STMdatabase.get_image_value(cls=STMdatabase(databaseName),myfile=self.filePath,channel=channel)
             return image
         except Exception as ex:
-            print("ErroMsg",ex)
-            print("ERRO"+"the file is not in datalist")
-
-            
-        
-
+            print("ErroMsg--get_image_value",ex)
+            print("ERRO---get_image_value "+"the file is not in datalist")
+    
 
 
     def get_data_list(self) -> STMdatabase.STMDATALIST:
@@ -555,6 +611,15 @@ class STMimage(STMdata):
         self.dataList["PosX_nm"]=round(float(Pos[0])*1e9,3)
         self.dataList["PosY_nm"]=round(float(Pos[1])*1e9,3)
         return super().get_data_list()
+    
+    def get_image_size(self):
+        try:
+            databaseName=self.DatabaseName
+            self.scan_size=STMdatabase.get_size(cls=STMdatabase(databaseName),myfile=self.filePath)
+            return self.scan_size*1e9
+        except Exception as ex:
+            print("ErroMsg--get_image_size",ex)
+            print("ERRO---get_image_size "+"the file is not in datalist")
     
 
     def get_data_info(self)->STMdatabase.STMIMAGEINFO:
