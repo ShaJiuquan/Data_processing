@@ -1,4 +1,10 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Display SVG Images with CSS</title>
+</head>
 <style>
 
     /* Add CSS styles for the SVG images */
@@ -9,54 +15,58 @@
     margin: 10px; /* Add spacing between images */
     padding: 5px; /* Add padding to images */
 }
-
-
-
-
 </style>
 
+<script>
+    // Directory containing SVG files
+const svgFolder = './svg_folder/';
+fileNames=['forward.svg','forward2.svg','forward3.svg','forward4.svg','forward5.svg']
 
+// Get a reference to the image container
+const imageContainer = document.getElementById('image-container');
+fileNames.forEach(fileName => {
+                if (fileName.endsWith('.svg')) {
+                    const img = new Image();
+                    img.src = svgFolder + fileName;
+                    img.alt = fileName; // Set alt text to the file name
+                    img.classList.add('svg-image'); // Add CSS class for styling
+                    imageContainer.appendChild(img);
+                };
+            })
+
+// Function to load and display SVG images
+function loadSVGImages() {
+    fetch(svgFolder)
+        .then(response => response.text())
+        .then(data => {
+            // Split the response text into an array of file names
+            const fileNames = data.split('\n');
+
+            // Loop through the file names and create image elements for each SVG
+            fileNames.forEach(fileName => {
+                if (fileName.endsWith('.svg')) {
+                    const img = new Image();
+                    img.src = svgFolder + fileName;
+                    img.alt = fileName; // Set alt text to the file name
+                    img.classList.add('svg-image'); // Add CSS class for styling
+                    imageContainer.appendChild(img);
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching SVG files:', error);
+        });
+}
+
+// Call the function to load and display SVG images
+//loadSVGImages();
+
+
+</script>
 
 
 <body>
-    <div id="image-container">here</div>
-
-    <script>
-        // Directory containing SVG files
-    const svgFolder = './svg_folder/';
-    
-    // Get a reference to the image container
-    const imageContainer = document.getElementById('image-container');
-    
-    // Function to load and display SVG images
-    function loadSVGImages() {
-        fetch(svgFolder)
-            .then(response => response.text())
-            .then(data => {
-                // Split the response text into an array of file names
-                const fileNames = data.split('\n');
-    
-                // Loop through the file names and create image elements for each SVG
-                fileNames.forEach(fileName => {
-                    if (fileName.endsWith('.svg')) {
-                        const img = new Image();
-                        img.src = svgFolder + fileName;
-                        img.alt = fileName; // Set alt text to the file name
-                        img.classList.add('svg-image'); // Add CSS class for styling
-                        imageContainer.appendChild(img);
-                    }
-                });
-            })
-            .catch(error => {
-                console.error('Error fetching SVG files:', error);
-            });
-    }
-    
-    // Call the function to load and display SVG images
-    loadSVGImages();
-    
-    
-    </script>
+    <div id="image-container"></div>
    
 </body>
 </html>
