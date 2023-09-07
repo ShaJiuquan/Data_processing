@@ -266,7 +266,6 @@ class STMdatabase:
     @staticmethod
     def get_list_id(cls,myfile):
         try:
-            print(cls.databaseName)
             select_list_id="SELECT List_ID FROM {0} WHERE UpdateFilePath='{1}'".format(cls.DATA_LIST_NAME,myfile)
             listID=cls.execute_sql_fetchone(select_list_id)
             return listID
@@ -617,7 +616,6 @@ class STMimage(STMdata):
         try:
             databaseName=self.DatabaseName
             scan_size=STMdatabase.get_size(cls=STMdatabase(databaseName),myfile=self.filePath)
-            print(type(scan_size),scan_size)
             self.scan_size=[float(value)*1e9 for value in scan_size.split(" ")]
             
             return self.scan_size
