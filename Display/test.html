@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Electron Python Integration</title>
+</head>
+<body>
+    <h1>Python Output:</h1>
+    <pre id="output">out here</pre>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <div id="connection-plot"></div>
+
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        
+
+        // Function to display Python script output in the HTML
+        function displayOutput(data) {
+            const data=1
+            const outputElement = document.getElementById('output');
+            outputElement.textContent = data;
+        }
+
+        // Receive Python output from the main process
+        ipcRenderer.on('python-output', (event, data) => {
+            displayOutput(data);
+        });
+  
+    // Define your data (replace with your own data structure)
+    const nodes = [
+      { id: "Node 1" },
+      { id: "Node 2" },
+      { id: "Node 3" },
+    ];
+  
+    const links = [
+      { source: "Node 1", target: "Node 2" },
+      { source: "Node 2", target: "Node 3" },
+    ];
+  
+    // Set up the SVG container
+    const svg = d3.select("#connection-plot")
+      .append("svg")
+      .attr("width", 800)
+      .attr("height", 600);
+  
+    // Create a force simulation
+    const simulation = d3.forceSimulation(nodes)
+      .force("link", d3.forceLink(links).id(d => d.id))
+      .force("charge", d3.forceManyBody().strength(-200))
+      .force("center", d3.forceCenter(400, 300));
+  
+    // Create links
+    const link = svg.selectAll(".link")
+      .data(links)
+      .enter().append("line")
+      .attr("class", "link");
+  
+    // Create nodes
+    const node = svg.selectAll(".node")
+      .data(nodes)
+      .enter().append("circle")
+      .attr("class", "node")
+      .attr("r", 20);
+  
+    // Add labels to nodes
+    const label = svg.selectAll(".label")
+      .data(nodes)
+      .enter().append("text")
+      .attr("class", "label")
+      .text(d => d.id);
+  
+    // Update node and link positions in each tick
+    simulation.on("tick", () => {
+      link
+        .attr("x1", d => d.source.x)
+        .attr("y1", d => d.source.y)
+        .attr("x2", d => d.target.x)
+        .attr("y2", d => d.target.y);
+  
+      node
+        .attr("cx", d => d.x)
+        .attr("cy", d => d.y);
+  
+      label
+        .attr("x", d => d.x)
+        .attr("y", d => d.y - 25); // Adjust label position
+    });
+  </script>
+  
+</body>
+</html>

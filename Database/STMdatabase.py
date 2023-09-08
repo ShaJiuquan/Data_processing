@@ -693,8 +693,8 @@ class STMimage(STMdata):
         return  self.imageValue
     
 class STMspec(STMdata):
-    def __init__(self, filePath: str) -> None:
-        super().__init__(filePath)
+    def __init__(self, filePath: str,DatabaseName="STMdata.db") -> None:
+        super().__init__(filePath,DatabaseName=DatabaseName)
         self.specInfo=STMdatabase.STMSPECINFO
         self.specValue=STMdatabase.STMSPECVALUE
 
@@ -821,8 +821,8 @@ class STMspec(STMdata):
 
 class STMgrid(STMdata):
     
-    def __init__(self, filePath: str) -> None:
-        super().__init__(filePath)
+    def __init__(self, filePath: str,DatabaseName="STMdata.db") -> None:
+        super().__init__(filePath,DatabaseName=DatabaseName)
         self.gridInfo=STMdatabase.STMGRIDINFO
         self.gridValue=STMdatabase.STMGRIDVALUE
 
