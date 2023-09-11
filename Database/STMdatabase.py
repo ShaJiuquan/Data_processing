@@ -897,6 +897,37 @@ class STMspec(STMdata):
         super().__init__(filePath,DatabaseName=DatabaseName)
         self.specInfo=STMdatabase.STMSPECINFO
         self.specValue=STMdatabase.STMSPECVALUE
+        self.specLabel=STMdatabase.STMSPECLABEL
+        self.pix=None
+        self.scan_size=None
+        self.scan_range=None
+        self.data=None
+
+
+
+    def get_data_label(self)->STMdatabase.STMSPECLABEL:
+        super().get_data_label()
+        self.specLabel["List_ID"]=self.list_ID
+        self.specLabel["TIME_STAMP"]=self.TimeStamp
+        self.specLabel["Data_ID"]=self.value_ID
+        self.specLabel["Info_ID"]=self.info_ID
+        self.specLabel["PosX_nm"]=self.posX
+        self.specLabel["PosY_nm"]=self.posY
+        self.specLabel["Bias_range"]=None
+        self.specLabel["Resolve"]=None
+        self.specLabel["Current"]=None
+        self.specLabel["Range"]=None
+        self.specLabel["Channel"]=1
+        self.specLabel["Spec_quality"]=-1
+        self.specLabel["Spec_type"]=-1
+        
+        return self.specLabel
+    
+
+
+
+    def get_bias_range(self):
+        pass
 
 
     
