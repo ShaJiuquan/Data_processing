@@ -5,6 +5,8 @@ import platform
 import numpy as np
 import pandas as pd
 import nanonispy as nap
+import math
+from skimage.metrics import structural_similarity as ssim
 
 
 class STMdatabase:
@@ -16,10 +18,13 @@ class STMdatabase:
     SPEC_INFO_NAME="STMSpecInfo"
     IMAGE_VALUE_NAME="STMimageValue"
     IMAGE_INFO_NAME="STMimageInfo"
+    IMAGE_LABEL="STMimageLabel"
+    SPEC_LABEL="STMspecLabel"
 
     STMDATALIST={"Name":"SiC001","TimeStamp":20.0,"UpdateFilePath":"",
              "Date":'24.02.2023',"Time":'09:09:29',"Bias_V": 2.5,
              "Current_pA": 30,"Type":"SXM","PosX_nm":328,"PosY_nm":328}
+    
     STMIMAGEINFO= {"List_ID":1,"TIME_STAMP":100,"NANONIS_VERSION":"SiC001","SCANIT_TYPE":"",
               "REC_DATE":"","REC_TIME":"","REC_TEMP":290,"ACQ_TIME":20.0,
               "SCAN_PIXELS":512,"SCAN_FILE":"","SCAN_TIME":30.0,"SCAN_RANGE":20,
@@ -28,14 +33,25 @@ class STMdatabase:
               "SW_Version":"","UI_Release":"","RT_Release":"","RT_Frequency":"",
               "Signals_Oversampling":"","Animations_Period":"","Indicators_Period":"",
               "Measurements_Period":"","DATA_INFO":""}
+    
+    STMIMAGELABEL= {"Data_ID":1,"Info_ID":1,"List_ID":1,"TIME_STAMP":100.0,"PosX_nm":328.0,"PosY_nm":328.0,"Image_pix":512,"Image_size":20,"Channel":1,
+                    "Range":"1 2 3 4","Image_quality":5,"Image_type":2,"forward_SNR":6.45,"backward_SNR": 6.05,"ssim_value": 0.44,"psnr_value": 24.35}  
+
+    
+    STMSPECLABEL= {"Data_ID":1,"Info_ID":1,"List_ID":1,"TIME_STAMP":100.0,"PosX_nm":328.0,"PosY_nm":328.0,"Bias_range":"-1.3,2.5 ","Resolve":1024,"Current":20,"Channel":1,
+                    "Range":"1 2 3 4","Spec_quality":5,"Spec_type":2}
+    
+
     STMIMAGEVALUE={"Info_ID":1,"List_ID":1,"TIME_STAMP":1,"Z_forward":"",
                   "Z_backward" :"","Current_forward":"","Current_backward":"","LIY_1_omega_forward":"",
                   "LIY_1_omega_backward":""}
+    
     STMSPECINFO={"List_ID":1,"TIME_STAMP":2.0,"Date":"11.08.2022 12:15:27","User":"NaN",
                  "X_m":"91.6774E-9","Y_m":"91.6774E-9","Z_m":"91.6774E-9","Z_offset":"0",
                  "Settling_time":"4E-3","Integration_time":"8E-3","Z_Ctrl_hold":"TRUE",
                  "Final_Z":"-211.889E-9","Filter_type":"Gaussian","Filter_Order":"3",
                  "Cut_off":"","comment":""}
+    
     STMSPECVALUE={"Info_ID":1,"List_ID":1,"TIME_STAMP":1,"Bias":'Bias calc (V)', "Current_forward":'Current (A)',
                     "Current_backward":'Current (A)',"LIY_1_omega_forward":"",'LIY_1_omega_backward':"LIY_1_omega_forward"}
 
@@ -67,6 +83,59 @@ class STMdatabase:
                                                 ON UPDATE NO ACTION
                                         );
                                      """.format(SPEC_VALUE_NAME)
+    
+
+
+    CREATE_IMAGE_LABEL_SQL = """ CREATE TABLE IF NOT EXISTS {0} ( 
+                                        Label_ID   INTEGER PRIMARY KEY AUTOINCREMENT,
+                                        Data_ID INTEGER,
+                                        Info_ID INTEGER,
+                                        List_ID INTEGER,
+                                        TIME_STAMP  REAL,
+                                        PosX_nm  REAL,
+                                        PosY_nm  REAL,
+                                        Image_pix INTEGER,
+                                        Image_size INTEGER,
+                                        Channel INTEGER,
+                                        Range  TEXT,
+                                        forward_SNR REAL,
+                                        backward_SNR REAL,
+                                        ssim_value REAL,
+                                        psnr_value REAL,
+                                        Image_quality INTEGER,
+                                        Image_type INTEGER,
+                                        
+                                        FOREIGN KEY (List_ID) 
+                                            REFERENCES STMdataLists (List_ID)
+                                                ON DELETE CASCADE 
+                                                ON UPDATE NO ACTION
+                                        );
+                                     """.format(IMAGE_LABEL)
+    
+
+    CREATE_SPEC_LABEL_SQL = """ CREATE TABLE IF NOT EXISTS {0} ( 
+                                        Label_ID   INTEGER PRIMARY KEY AUTOINCREMENT, 
+                                        Data_ID INTEGER,
+                                        Info_ID INTEGER,
+                                        List_ID INTEGER,
+                                        TIME_STAMP  REAL,
+                                        PosX_nm  REAL,
+                                        PosY_nm  REAL,
+                                        Bias_range TEXT,
+                                        Resolve INTEGER,
+                                        Current REAL,
+                                        Channel INTEGER,
+                                        Range  TEXT,
+                                        Spec_quality INTEGER,
+                                        Spec_type INTEGER,
+                                        FOREIGN KEY (List_ID) 
+                                            REFERENCES STMdataLists (List_ID)
+                                                ON DELETE CASCADE 
+                                                ON UPDATE NO ACTION
+                                        );
+                                     """.format(SPEC_LABEL)
+    
+
     CREATE_DATA_LIST_SQL= """ CREATE TABLE IF NOT EXISTS {0} (
                                         List_ID   INTEGER PRIMARY KEY AUTOINCREMENT,
                                         Name TEXT NOT NULL,
@@ -263,6 +332,20 @@ class STMdatabase:
             print("ErroMsg-----",ex)
             print("ERRO-------"+sql)
             return None
+        
+    def execute_sql_fetchall(self,sql):
+        try:
+            with sqlite3.connect(self.databaseName) as conn:
+                    c = conn.cursor()
+                    data=c.execute(sql)
+                    Value=data.fetchall()
+            
+            print("SUCCESS---------"+sql)
+            return Value
+        except Exception as ex:
+            print("ErroMsg-----",ex)
+            print("ERRO-------"+sql)
+            return None
     @staticmethod
     def get_list_id(cls,myfile):
         try:
@@ -300,6 +383,8 @@ class STMdatabase:
             return  PosX
         except Exception as ex:
             print("ERRO---------------get_pos",ex)
+
+
     @staticmethod
     def get_pos_Y(cls,myfile):
         try:
@@ -348,6 +433,19 @@ class STMdatabase:
 
         info_id=cls.execute_sql_fetchone(select_info_id)
         return  info_id
+    
+    @staticmethod
+    def get_value_id(cls,myfile):
+        listID=cls.get_list_id(cls,myfile)
+        if myfile.endswith("sxm"):
+            select_value_id="SELECT Data_ID FROM {0} WHERE List_ID={1}".format(cls.IMAGE_VALUE_NAME,listID)
+        elif myfile.endswith("dat"):
+            select_value_id="SELECT Data_ID FROM {0} WHERE List_ID={1}".format(cls.SPEC_VALUE_NAME,listID)
+        elif myfile.endswith("3ds"):
+            select_value_id="SELECT Data_ID FROM {0} WHERE List_ID={1}".format(cls.GRID_VALUE_NAME,listID)
+
+        value_id=cls.execute_sql_fetchone(select_value_id)
+        return  value_id
 
 
 
@@ -369,6 +467,15 @@ class STMdatabase:
         except Exception as ex:
             print("ErroMsg",ex)
             print("ERRO"+"{0} table created failed".format(tableName))
+
+
+    def drop_creat_image_label_table(self)->None:
+        self.drop_table(self.IMAGE_LABEL)
+        self.creat_table(tableName=self.IMAGE_LABEL,creat_table_sql=self.CREATE_IMAGE_LABEL_SQL)
+
+    def drop_creat_spec_label_table(self)->None:
+        self.drop_table(self.SPEC_LABEL)
+        self.creat_table(tableName=self.SPEC_LABEL,creat_table_sql=self.CREATE_SPEC_LABEL_SQL)
     
 
     def drop_creat_list_table(self)->None:
@@ -420,12 +527,14 @@ class STMdatabase:
             values=[STMdateList[STMdataKey] for STMdataKey in STMdataKeys if STMdataKey in KEYS ]
             key=",".join([STMdataKey for STMdataKey in STMdataKeys if STMdataKey in KEYS ])
             value=",".join(["?"]*len([STMdataKey for STMdataKey in STMdataKeys if STMdataKey in KEYS ]))
+            
             insert="INSERT INTO {}({}) VALUES({})".format(table,key,value)
             self.execute_sql_arg(insert,values)
             print("Insert table is successed")
         except Exception as ex:
             print("ErroMsg",ex)
-            print("ERRO"+"Insert table is failed")
+            print("ERRO"+" Insert table is failed")
+            
 
             
 
@@ -434,6 +543,17 @@ class STMdatabase:
     def insert_list_table(self,STMdateList:STMDATALIST=STMDATALIST)->None:
         table=self.DATA_LIST_NAME
         DATA_LIST=self.STMDATALIST
+        self.insert_table(table,DATA_LIST,STMdateList)
+
+
+    def insert_image_label_table(self,STMdateList:STMIMAGELABEL=STMIMAGELABEL)->None:
+        table=self.IMAGE_LABEL
+        DATA_LIST=self.STMIMAGELABEL
+        self.insert_table(table,DATA_LIST,STMdateList)
+
+    def insert_spec_label_table(self,STMdateList:STMSPECLABEL=STMSPECLABEL)->None:
+        table=self.SPEC_LABEL
+        DATA_LIST=self.STMSPECLABEL
         self.insert_table(table,DATA_LIST,STMdateList)
         
     def insert_imageInfo_table(self,STMdateList:STMIMAGEINFO=STMIMAGEINFO)->None:
@@ -479,6 +599,18 @@ class utils:
         except ValueError as e:
             print(f"Error: {e}")
             return None
+        
+    def calculate_snr(image):
+        signal = np.mean(image)
+        noise = np.std(image)
+        snr = signal / noise
+        return snr
+    def calculate_psnr(image1,image2):
+        mse = np.mean((image1 - image2) ** 2)
+        if mse == 0:
+            return -1
+        return 10 * math.log10(1. / mse)
+    
     def get_platform():
         platforms={
             "linux1":"linux",
@@ -497,10 +629,21 @@ class STMdata:
         self.list_ID=None
         self.TimeStamp=None
         self.info_ID=None
+        self.value_ID=None
+        self.value=None
         self.DatabaseName=DatabaseName
         self.posX,self.posY=self.get_pos()
 
-        
+    def get_data_label(self):
+        try:
+            self.get_data_value()
+            self.get_value_id()
+            self.get_pos()
+            
+        except Exception as ex:
+            print("ErroMsg------get_data_label",ex)
+            print("ERRO----get_data_label "+"the file is not in datalist")
+
 
     def get_data_list(self)->STMdatabase.STMDATALIST:
         self.dataList["UpdateFilePath"]=self.filePath
@@ -515,7 +658,14 @@ class STMdata:
         self.dataList["Name"]=fileName
         self.dataList["Type"]=filetype
         return self.dataList
-    
+    def get_value_id(self):
+        databaseName=self.DatabaseName
+        try:
+            self.value_ID=STMdatabase.get_value_id(cls=STMdatabase(databaseName),myfile=self.filePath)
+          
+        except Exception as ex:
+            print("ErroMsg------get_data_info",ex)
+            print("ERRO----get_data_info "+"the file is not in datalist")
     def get_pos(self):
         databaseName=self.DatabaseName
         try:
@@ -555,15 +705,65 @@ class STMimage(STMdata):
         super().__init__(filePath,DatabaseName=DatabaseName)
         self.imageInfo=STMdatabase.STMIMAGEINFO
         self.imageValue=STMdatabase.STMIMAGEVALUE
-        self.pix=self.get_pix()
-        self.scan_size=self.get_image_size()
-        self.scan_range=self.get_image_range()
+        self.imageLabel=STMdatabase.STMIMAGELABEL
+        self.pix=None
+        self.scan_size=None
+        self.scan_range=None
         self.data=None
+
+    STMIMAGELABEL= {"Data_ID":1,"Info_ID":1,"List_ID":1,"TIME_STAMP":100.0,"PosX_nm":328.0,"PosY_nm":328.0,"Image_pix":512,"Image_size":20,"Channel":1,
+                    "Range":"1 2 3 4","Image_quality":5,"Image_type":2}
+    def get_data_label(self)->STMdatabase.STMIMAGELABEL:
+        super().get_data_label()
+        self.get_pix()
+        self.get_image_range()
+        self.imageLabel["List_ID"]=self.list_ID
+        self.imageLabel["TIME_STAMP"]=self.TimeStamp
+        self.imageLabel["Data_ID"]=self.value_ID
+        self.imageLabel["Info_ID"]=self.info_ID
+        self.imageLabel["PosX_nm"]=self.posX
+        self.imageLabel["PosY_nm"]=self.posY
+        self.imageLabel["Image_pix"]=self.pix[0]
+        self.imageLabel["Image_size"]=self.scan_size[0]
+        self.imageLabel["Range"]=str(self.scan_range[0]) +" "+ str(self.scan_range[1])+" "+str(self.scan_range[2])+" "+str(self.scan_range[3])
+        self.imageLabel["Channel"]=1
+        self.imageLabel["Image_quality"]=-1
+        self.imageLabel["Image_type"]=-1
+        self.imageLabel["forward_SNR"],self.imageLabel["backward_SNR"],self.imageLabel["ssim_value"],self.imageLabel["psnr_value"]=self.image_quality()
+        return self.imageLabel
+
+    def correct_line(self,channel="Z_forward"):
+        image=self.get_image_value(channel=channel)
+        Z_image= pySPM.SPM_image(image)
+        Z_image.correct_median_diff()
+        Z_image.correct_lines()
+        return Z_image.pixels
+        
+
+    def image_quality(self):
+        image_for=self.correct_line(channel="Z_forward")
+        image_back=self.correct_line(channel="Z_backward")
+        image_for=(image_for-image_for.min())/(image_for.max()-image_for.min())
+        image_back=(image_back-image_back.min())/(image_back.max()-image_back.min())
+        forward_SNR = utils.calculate_snr(image_for)
+        print(f'forward_SNR: {forward_SNR:.2f}')
+
+        backward_SNR =  utils.calculate_snr(image_back[::,::-1])
+        print(f'backward_SNR: {backward_SNR:.2f}')
+
+        ssim_value=ssim(image_for,image_back[::,::-1],data_range=image_for.max()-image_for.min())
+
+        print(f'ssim_value: {ssim_value:.2f}')
+        psnr_value= utils.calculate_psnr(image_for,image_back[::,::-1])
+
+        print(f'psnr_value: {psnr_value:.2f}')
+        return round(forward_SNR,2),round(backward_SNR,2),round(ssim_value,2),round(psnr_value,2)
+
 
 
     def get_image_range(self):
         try:
-            
+            self.get_image_size()
             self.scan_range=[round(self.posX-self.scan_size[0]/2,3), round(self.posX+self.scan_size[0]/2,3), round(self.posY-self.scan_size[1]/2,3), round(self.posY+self.scan_size[1]/2,3)]
             return self.scan_range
         except Exception as ex:
@@ -697,6 +897,9 @@ class STMspec(STMdata):
         super().__init__(filePath,DatabaseName=DatabaseName)
         self.specInfo=STMdatabase.STMSPECINFO
         self.specValue=STMdatabase.STMSPECVALUE
+
+
+    
 
 
     def get_data_list(self) -> STMdatabase.STMDATALIST:

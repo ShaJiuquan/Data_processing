@@ -7,4 +7,17 @@ SELECT PosX_nm, PosY_nm from STMdataLists  WHERE UpdateFilePath='../../../STMdat
 
 SELECT SCAN_RANGE from STMimageInfo WHERE List_ID=5836;
 
-SELECT SCAN_RANGE from STMimageInfo WHERE List_ID=5836
+SELECT SCAN_RANGE from STMimageInfo WHERE List_ID=5836;
+
+SELECT *
+FROM STMdataLists
+JOIN STMimageLabel ON STMdataLists.List_ID = STMimageLabel.List_ID
+WHERE STMdataLists.List_ID  = 150;
+SELECT * FROM STMdataLists
+JOIN STMimageLabel ON STMdataLists.List_ID = STMimageLabel.List_ID
+WHERE STMdataLists.List_ID  = 1;
+SELECT * FROM STMdataLists WHERE STMdataLists.List_ID  = 50;
+
+SELECT * FROM STMdataLists , STMimageLabel WHERE STMdataLists.List_ID  = 1 AND STMimageLabel.List_ID=1;
+SELECT * FROM STMdataLists , STMimageLabel WHERE STMdataLists.List_ID = STMimageLabel.List_ID AND STMdataLists.List_ID <10
+
