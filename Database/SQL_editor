@@ -23,4 +23,6 @@ SELECT * FROM STMdataLists , STMimageLabel WHERE STMdataLists.List_ID = STMimage
 
 UPDATE STMimageLabel SET  Image_quality=1  WHERE STMdataLists.List_ID = STMimageLabel.List_ID AND STMdataLists.UpdateFilePath='../../../STMdata/20220608/SiC#68007.sxm';
 UPDATE STMimageLabel SET Image_quality=1 WHERE STMdataLists.List_ID=STMimageLabel.List_ID AND STMdataLists.UpdateFilePath='../../../STMdata/20220608/SiC#68007.sxm';
-SELECT  List_ID  FROM STMdataLists WHERE UpdateFilePath='../../../STMdata/20220608/SiC#68007.sxm'
+SELECT  List_ID  FROM STMdataLists WHERE UpdateFilePath='../../../STMdata/20220608/SiC#68007.sxm';
+SELECT Grid_dim from STMGridInfo WHERE List_ID=5667;
+SELECT Grid_settings from STMGridInfo WHERE List_ID=5667

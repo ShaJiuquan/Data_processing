@@ -1,0 +1,20 @@
+[
+    {
+        "job": {
+            "@module": "pysisso.jobs",
+            "@class": "SISSOJob",
+            "@version": null,
+            "SISSO_exe": "SISSO",
+            "nprocs": 1,
+            "stdout_file": "SISSO.log",
+            "stderr_file": "SISSO.err"
+        },
+        "corrections": [],
+        "handler": null,
+        "validator": null,
+        "max_errors": false,
+        "max_errors_per_job": false,
+        "max_errors_per_handler": false,
+        "nonzero_return_code": false
+    }
+]

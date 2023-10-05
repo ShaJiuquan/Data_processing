@@ -20,6 +20,7 @@ class STMdatabase:
     IMAGE_INFO_NAME="STMimageInfo"
     IMAGE_LABEL="STMimageLabel"
     SPEC_LABEL="STMspecLabel"
+    log=True
 
     STMDATALIST={"Name":"SiC001","TimeStamp":20.0,"UpdateFilePath":"",
              "Date":'24.02.2023',"Time":'09:09:29',"Bias_V": 2.5,
@@ -288,8 +289,9 @@ class STMdatabase:
 
                                 ); """.format(IMAGE_INFO_NAME)
      
-    def __init__(self,databaseName: str) -> None:
+    def __init__(self,databaseName: str,log=False) -> None:
         self.databaseName=databaseName
+        self.log=log
     def creat_all_table(self)->None:
         self.drop_creat_list_table()
         self.drop_creat_imageInfo_table()
@@ -305,7 +307,8 @@ class STMdatabase:
             with sqlite3.connect(self.databaseName) as conn:
                     c = conn.cursor()
                     c.execute(sql)
-            print("SUCCESS---------"+sql)
+            if self.log:
+                print("SUCCESS---------"+sql)
         except Exception as ex:
             print("ErroMsg-----",ex)
             print("ERRO-------"+sql)
@@ -315,7 +318,8 @@ class STMdatabase:
             with sqlite3.connect(self.databaseName) as conn:
                     c = conn.cursor()
                     c.execute(sql,arg)
-            print("SUCCESS---------"+sql,arg)
+            if self.log:
+                print("SUCCESS---------"+sql,arg)
         except Exception as ex:
             print("ErroMsg-----",ex)
             print("ERRO-------"+sql)
@@ -325,8 +329,8 @@ class STMdatabase:
                     c = conn.cursor()
                     data=c.execute(sql)
                     Value=data.fetchall()[0][0]
-            
-            print("SUCCESS---------"+sql)
+            if self.log:
+                print("SUCCESS---------"+sql)
             return Value
         except Exception as ex:
             print("ErroMsg-----",ex)
@@ -339,8 +343,8 @@ class STMdatabase:
                     c = conn.cursor()
                     data=c.execute(sql)
                     Value=data.fetchall()
-            
-            print("SUCCESS---------"+sql)
+            if self.log:
+                print("SUCCESS---------"+sql)
             return Value
         except Exception as ex:
             print("ErroMsg-----",ex)
@@ -373,6 +377,38 @@ class STMdatabase:
         
         except Exception as ex:
             print("ERRO---------------get_image_pix",ex)
+
+    @staticmethod
+    def get_grid_dim(cls,myfile):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            sql_grid_dim="SELECT Grid_dim from {0} WHERE List_ID={1}".format(cls.GRID_INFO_NAME,listID)
+            dim_s=cls.execute_sql_fetchone(sql_grid_dim)
+            dim_a=[x for x in dim_s.split("x") ]
+            return  [int(dim_a[0][1:]),int(dim_a[-1][:-1])]
+        except Exception as ex:
+            print("ERRO---------------get_grid_dim",ex)
+
+    @staticmethod
+    def get_grid_parasize(cls,myfile):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            sql_grid_dim="SELECT Parameters from {0} WHERE List_ID={1}".format(cls.GRID_INFO_NAME,listID)
+            para=cls.execute_sql_fetchone(sql_grid_dim)
+            return  int(para)
+        except Exception as ex:
+            print("ERRO---------------get_grid_parasize",ex)
+
+    @staticmethod
+    def get_grid_point(cls,myfile):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            sql_points="SELECT Points from {0} WHERE List_ID={1}".format(cls.GRID_INFO_NAME,listID)
+            points=cls.execute_sql_fetchone(sql_points)
+           
+            return  int(points)
+        except Exception as ex:
+            print("ERRO---------------get_grid_dim",ex)
     
     @staticmethod
     def get_pos_X(cls,myfile):
@@ -420,6 +456,71 @@ class STMdatabase:
             return  image
         except Exception as ex:
             print("ERRO---------------get_image_value",ex)
+
+
+    @staticmethod
+    def get_spec_value(cls,myfile,channel="Z_forward"):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            sql_spec_value="SELECT {0} from {1} WHERE List_ID={2}".format(channel,cls.SPEC_VALUE_NAME,listID)
+            spec_blob=cls.execute_sql_fetchone(sql_spec_value)
+            spec=np.frombuffer(spec_blob, dtype=float)
+            sql_bias_value="SELECT Bias from {1} WHERE List_ID={2}".format(channel,cls.SPEC_VALUE_NAME,listID)
+            bias_blob=cls.execute_sql_fetchone(sql_bias_value)
+            bias=np.frombuffer(bias_blob, dtype=float)
+            return bias, spec
+        except Exception as ex:
+            print("ERRO---------------get_spec_value",ex)
+    @staticmethod
+    def get_grid_value(cls,myfile,channel="LIY_1_omega"):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            dim=cls.get_grid_dim(cls,myfile)
+            points=cls.get_grid_point(cls,myfile)
+            sql_grid_value="SELECT {0} from {1} WHERE List_ID={2}".format(channel,cls.GRID_VALUE_NAME,listID)
+            grid_blob=cls.execute_sql_fetchone(sql_grid_value)
+            Grid=np.frombuffer(grid_blob, dtype=np.float32).reshape(dim[0], dim[1],points)
+            sql_bias_value="SELECT Bias from {1} WHERE List_ID={2}".format(channel,cls.GRID_VALUE_NAME,listID)
+            bias_blob=cls.execute_sql_fetchone(sql_bias_value)
+            bias=np.frombuffer(bias_blob, dtype=np.float32)
+            return bias, Grid
+        except Exception as ex:
+            print("ERRO---------------get_grid_value",ex)
+
+    @staticmethod
+    def get_grid_settings(cls,myfile):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            sql_grid_setting="SELECT Grid_settings from {0} WHERE List_ID={1}".format(cls.GRID_INFO_NAME,listID)
+            grid_setting_s=cls.execute_sql_fetchone(sql_grid_setting)
+            
+            grid_setting=[float(x) for x in grid_setting_s.split(";") ]
+            return grid_setting
+        except Exception as ex:
+            print("ERRO---------------get_grid_setting",ex)
+
+
+
+
+
+
+
+    @staticmethod
+    def get_grid_para(cls,myfile,channel="Para"):
+        try:
+            listID=cls.get_list_id(cls,myfile)
+            dim=cls.get_grid_dim(cls,myfile)
+            para=cls.get_grid_parasize(cls,myfile)
+            points=cls.get_grid_point(cls,myfile)
+            sql_para_value="SELECT Para from {1} WHERE List_ID={2}".format(channel,cls.GRID_VALUE_NAME,listID)
+            grid_blob=cls.execute_sql_fetchone(sql_para_value)
+            Para=np.frombuffer(grid_blob, dtype=np.float32).reshape(dim[0], dim[1],para)
+            sql_bias_value="SELECT Bias from {1} WHERE List_ID={2}".format(channel,cls.GRID_VALUE_NAME,listID)
+            bias_blob=cls.execute_sql_fetchone(sql_bias_value)
+            bias=np.frombuffer(bias_blob, dtype=np.float32)
+            return bias, Para
+        except Exception as ex:
+            print("ERRO---------------gget_grid_para",ex)
     
     @staticmethod
     def get_info_id(cls,myfile):
@@ -924,6 +1025,16 @@ class STMspec(STMdata):
         return self.specLabel
     
 
+    def get_spec_value(self,channel="LIY_1_omega_forward"):
+        databaseName=self.DatabaseName
+        try:
+            bias,spec=STMdatabase.get_spec_value(cls=STMdatabase(databaseName),myfile=self.filePath,channel=channel)
+            return bias,spec
+        except Exception as ex:
+            print("ErroMsg--get_image_value",ex)
+            print("ERRO---get_image_value "+"the file is not in datalist")
+    
+
 
 
     def get_bias_range(self):
@@ -1025,6 +1136,11 @@ class STMspec(STMdata):
         self.specValue["Info_ID"]=self.info_ID
         self.specValue["List_ID"]=self.list_ID
         self.specValue["TIME_STAMP"]=self.TimeStamp
+        self.specValue["Bias"]=None
+        self.specValue["Current_forward"]=None
+        self.specValue["Current_backward"]=None
+        self.specValue["LIY_1_omega_forward"]=None
+        self.specValue["LIY_1_omega_backward"]=None
         while Notfound:
             df_d=pd.read_table(self.filePath,sep="\t",skiprows=skiprows)
             Keys=df_d.keys()
@@ -1035,6 +1151,8 @@ class STMspec(STMdata):
                 df_d=pd.read_table(self.filePath,sep="\t",skiprows=skiprows)
                 channels=list(df_d.keys())
                 Notfound=0
+
+        
 
 
         STMSpecKeys=['Bias calc (V)', 'Current (A)',  'LIY 1 omega (A)', 'Current [bwd] (A)',  'LIY 1 omega [bwd] (A)']
@@ -1144,7 +1262,34 @@ class STMgrid(STMdata):
             print(self.filePath)
         finally:
             return self.gridInfo
-        
+    
+    def get_grid_settings(self):
+        databaseName=self.DatabaseName
+        try:
+            grid_settings=STMdatabase.get_grid_settings(cls=STMdatabase(databaseName),myfile=self.filePath)
+            return grid_settings
+        except Exception as ex:
+            print("ErroMsg--get_grid_settings",ex)
+            print("ERRO---get_grid_settings "+"the file is not in datalist")
+
+
+    def get_grid_para(self,channel="Para"):
+        databaseName=self.DatabaseName
+        try:
+            bias,Para=STMdatabase.get_grid_para(cls=STMdatabase(databaseName),myfile=self.filePath,channel=channel)
+            return bias,Para
+        except Exception as ex:
+            print("ErroMsg--get_grid_para",ex)
+            print("ERRO---get_grid_para "+"the file is not in datalist")
+
+    def get_grid_value(self,channel="LIY_1_omega"):
+        databaseName=self.DatabaseName
+        try:
+            bias,grid=STMdatabase.get_grid_value(cls=STMdatabase(databaseName),myfile=self.filePath,channel=channel)
+            return bias,grid
+        except Exception as ex:
+            print("ErroMsg--get_grid_value",ex)
+            print("ERRO---get_grid_value "+"the file is not in datalist")
 
 
     def get_data_value(self)->STMdatabase.STMGRIDVALUE:
@@ -1153,6 +1298,12 @@ class STMgrid(STMdata):
         self.gridValue["Info_ID"]=self.info_ID
         self.gridValue["List_ID"]=self.list_ID
         self.gridValue["TIME_STAMP"]=self.TimeStamp
+        self.gridValue["Bias"]=None
+        self.gridValue["Para"]=None
+        self.gridValue["Current"]=None
+        self.gridValue["LIX_1_omega"]=None
+        self.gridValue["LIY_1_omega"]=None
+        
         
         try:
             grid = nap.read.Grid(self.filePath) 
@@ -1172,17 +1323,17 @@ class STMgrid(STMdata):
 
             STMSpecKeys=['Current (A)', 'LIX 1 omega (A)',  'LIY 1 omega (A)']
             KeySpec={'Current (A)':"Current", 'LIX 1 omega (A)':"LIX_1_omega",  'LIY 1 omega (A)':"LIY_1_omega", 'params':"Para","Bias":"Bias"}
-            SpecValue=np.array(grid._load_data()["params"])
+            SpecValue=np.array(grid._load_data()["params"],dtype=np.float32)
             array_bytes = SpecValue.tobytes()
             self.gridValue[KeySpec["params"]]=sqlite3.Binary(array_bytes)
-            SpecValue=np.array(sweep)
+            SpecValue=np.array(sweep,dtype=np.float32)
             array_bytes = SpecValue.tobytes()
             self.gridValue[KeySpec["Bias"]]=sqlite3.Binary(array_bytes)
             for channel in channels:
                 key_value= channel[0]
                 if key_value in STMSpecKeys:
                     try: 
-                        SpecValue=np.array(grid._load_data()[key_value])
+                        SpecValue=np.array(grid._load_data()[key_value],dtype=np.float32)
                         array_bytes = SpecValue.tobytes()
                         self.gridValue[KeySpec[key_value]]=sqlite3.Binary(array_bytes)
                         
